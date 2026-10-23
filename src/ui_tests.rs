@@ -1783,6 +1783,40 @@ fn open_file_location_from_recent_selects_the_file_in_its_folder() {
 }
 
 #[test]
+fn open_file_location_in_new_tab_from_a_search_result() {
+    let root = tempfile::tempdir().unwrap();
+    let photo = root.path().join("Trips/2025/beach.jpg");
+    std::fs::create_dir_all(photo.parent().unwrap()).unwrap();
+    std::fs::write(&photo, "").unwrap();
+    let mut h = harness(root.path());
+    // Trips, 2025, beach.jpg
+    let _index = enable_index(&mut h, root.path(), 3);
+    h.key_press_modifiers(Modifiers::COMMAND, Key::F);
+    h.run_steps(2);
+    h.event(Event::Text("beach".into()));
+    h.run_steps(3);
+    pick_scope(&mut h, "This folder and subfolders");
+    step_until(&mut h, "subfolder results", |app| {
+        !app.ui.list.items.is_empty()
+    });
+    let beach = rightmost(&h, "beach.jpg");
+    right_click(&mut h, beach.center());
+    h.get_by_label("🗂 Open file location in new tab").click();
+    h.run_steps(5);
+    assert_eq!(h.state().ui.tabs.len(), 2);
+    assert_eq!(h.state().fs.get_current_path(), photo.parent().unwrap());
+    assert!(
+        h.state().ui.search_text.is_empty(),
+        "the new tab isn't searching"
+    );
+    assert_eq!(
+        h.state().ui.selected_paths(),
+        [photo],
+        "the file is selected in its folder"
+    );
+}
+
+#[test]
 fn alt_enter_shows_properties_of_the_selected_image() {
     let dir = picture_folder();
     let mut h = harness(dir.path());

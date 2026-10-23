@@ -300,8 +300,9 @@ enum Action {
     OpenWithApp(open_with::App, Vec<PathBuf>, Option<String>),
     /// Choose another app for the selection.
     ChooseApp,
-    /// Open the folder holding this item, with the item selected.
-    OpenLocation(PathBuf),
+    /// Open the folder holding this item, with the item selected; with
+    /// `true`, in a new tab.
+    OpenLocation(PathBuf, bool),
     /// Forget the recent files and folders.
     ClearRecent,
     /// Turn keeping and showing recent files on or off.
@@ -2440,7 +2441,14 @@ impl NinimmaUI {
             }
             Action::SetAppearance(appearance) => self.settings.appearance = appearance,
             Action::SetScale(scale) => self.settings.ui_scale = scale,
-            Action::OpenLocation(path) => {
+            Action::OpenLocation(path, true) => {
+                if let Some(parent) = path.parent().filter(|p| p.is_dir()) {
+                    self.open_tab(fs, parent.to_path_buf(), true);
+                    // Selected once the new tab's folder has loaded.
+                    self.reveal = Some(path);
+                }
+            }
+            Action::OpenLocation(path, false) => {
                 if let Some(parent) = path.parent() {
                     self.special = None;
                     self.search_text.clear();
@@ -3126,7 +3134,12 @@ impl NinimmaUI {
                     actions.extend(folders.into_iter().take(1).map(Action::Navigate));
                 }
                 Request::Items(items) => {
-                    actions.extend(items.into_iter().take(1).map(Action::OpenLocation));
+                    actions.extend(
+                        items
+                            .into_iter()
+                            .take(1)
+                            .map(|item| Action::OpenLocation(item, false)),
+                    );
                 }
             }
             ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
@@ -5277,7 +5290,13 @@ impl NinimmaUI {
         if (item.path.parent() != Some(self.shown_path.as_path()) || self.special.is_some())
             && ui.button("📂 Open file location").clicked()
         {
-            actions.push(Action::OpenLocation(item.path.clone()));
+            actions.push(Action::OpenLocation(item.path.clone(), false));
+            ui.close();
+        }
+        // Every search result, wherever it was found.
+        if !self.search_text.is_empty() && ui.button("🗂 Open file location in new tab").clicked()
+        {
+            actions.push(Action::OpenLocation(item.path.clone(), true));
             ui.close();
         }
         if item.is_dir {
