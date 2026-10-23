@@ -7,6 +7,8 @@ InstallDir "$LOCALAPPDATA\Programs\Ninimma"
 RequestExecutionLevel user
 Icon "assets\icons\ninimma.ico"
 !define MUI_ABORTWARNING
+!define MUI_WELCOMEFINISHPAGE_BITMAP "assets\branding\installer-welcome.bmp"
+!define MUI_UNWELCOMEFINISHPAGE_BITMAP "assets\branding\installer-welcome.bmp"
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "LICENSE"
 !insertmacro MUI_PAGE_DIRECTORY

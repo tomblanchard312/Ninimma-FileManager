@@ -19,3 +19,14 @@ Thumbs.db
 
 # Python helper tests
 __pycache__/
+
+# Release output
+*.deb
+*.rpm
+*.pkg
+*.dmg
+*.flatpak
+*.sha256
+*.tar.gz
+/flatpak-repo/
+/artifacts/

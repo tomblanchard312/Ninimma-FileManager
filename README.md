@@ -1,5 +1,7 @@
 # Ninimma File Manager
 
+<img src="assets/branding/ninimma-logo.png" alt="Ninimma: an organized folder with a scribal stylus" width="240">
+
 A modern desktop file manager built in Rust with egui: large thumbnails, tabs,
 file previews, undo, network folders, and optional private smart search.
 
@@ -101,7 +103,7 @@ into providers automatically.
 - Thumbnails load in the background, on-screen items first, and are cached on disk.
 - **Natural sorting** like Explorer: `IMG_2` comes before `IMG_10`
 - **Auto-refresh** when files change on disk
-- **Themes** (View → Theme): light, dark, high contrast dark and light, or following the system's light/dark setting (the default). **Interface size** (View → Interface Size) scales the whole window from 80% to 200%. Both switch at once and are remembered. Icons are [Lucide](https://lucide.dev)'s (ISC), drawn in the theme's colours.
+- **Themes** (View → Theme): light, dark, high contrast dark and light, or following the system's light/dark setting (the default). **Interface size** (View → Interface Size) scales the whole window from 80% to 200%. Both switch at once and are remembered. Native Windows accent colors/system icons and GNOME/KDE widget/icon themes are not yet integrated. Icons are [Lucide](https://lucide.dev)'s (ISC), drawn in the theme's colours.
 
 ### Selection
 - Click, **Ctrl+click** (toggle), **Shift+click** (range), **Ctrl+A**
@@ -287,3 +289,17 @@ Licensed under [Apache-2.0](LICENSE). Keep [NOTICE](NOTICE), the licence, and re
 third-party attributions with redistributed copies. The embedded interface icons
 use Lucide; its full licence is in [LICENSE-lucide](packaging/icons/LICENSE-lucide).
 Modified source files are marked with Ninimma modification notices.
+
+## Contribute and verify downloads
+
+[Suggest an idea or report a bug](https://github.com/tomblanchard312/Ninimma-FileManager/issues/new/choose).
+Contributors work through forks and reviewed pull requests. See the
+[contribution policy](.github/CONTRIBUTING.md) and [security policy](.github/SECURITY.md).
+Future releases built with the attestation-enabled workflows include GitHub build
+provenance. Verify a downloaded installer with:
+
+```sh
+gh attestation verify DOWNLOAD -R tomblanchard312/Ninimma-FileManager
+```
+
+These attestations do not replace operating-system code signing.

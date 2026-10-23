@@ -1,0 +1,10 @@
+name: Bug report
+description: Report a reproducible problem
+body:
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: "Which version and operating system? What steps reproduce the problem? What did you expect, and what happened? Use made-up data and remove secrets."
+    validations:
+      required: true

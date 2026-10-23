@@ -1,0 +1,3 @@
+Generated with the built-in image generation tool.
+Prompt: Modern Ninimma File Manager logo: blue archival folder/tablet, three aligned record strokes, diagonal scribal stylus, navy/electric blue/cyan, transparent background, no text.
+Installer bitmap is a packaging conversion of this artwork. The existing application icon is preserved.

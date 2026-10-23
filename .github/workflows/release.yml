@@ -136,6 +136,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
@@ -145,6 +147,10 @@ jobs:
       - name: Checksums
         working-directory: artifacts
         run: sha256sum * > SHA256SUMS
+      - name: Attest release artifacts
+        uses: actions/attest@v4
+        with:
+          subject-path: 'artifacts/*'
       - name: Publish installers
         env:
           GH_TOKEN: ${{ github.token }}
