@@ -1,3 +1,4 @@
+// Modified from Candle 0.11.0 for ZIP 9 compatibility and current Clippy; see NOTICE.
 #![allow(clippy::excessive_precision)]
 // Code taken from https://github.com/statrs-dev/statrs
 //! Provides the [error](https://en.wikipedia.org/wiki/Error_function) and

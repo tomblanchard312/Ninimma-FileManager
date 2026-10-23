@@ -75,7 +75,6 @@ pub fn launch(
 
 #[cfg(target_os = "linux")]
 fn launch_linux(operation: Operation, target: &str, read_only: bool) -> Result<(), String> {
-    use std::process::Command;
     // No user text is interpolated into shell source. It follows the fixed
     // wrapper as separate argv entries, including image paths with spaces.
     let wrapper = r#""$@"; result=$?; printf '\nOperation exited with status %s. Press Enter to close.\n' "$result"; read -r answer; exit "$result""#;
@@ -97,10 +96,15 @@ fn launch_linux(operation: Operation, target: &str, read_only: bool) -> Result<(
         ("x-terminal-emulator", vec!["-e"]),
         ("gnome-terminal", vec!["--"]),
         ("konsole", vec!["-e"]),
+        ("kgx", vec!["--"]),
+        ("ptyxis", vec!["--"]),
         ("xfce4-terminal", vec!["--execute"]),
         ("xterm", vec!["-e"]),
     ] {
-        match Command::new(terminal).args(prefix).args(payload).spawn() {
+        let Some(mut command) = crate::terminal::command(terminal, None)? else {
+            continue;
+        };
+        match command.args(prefix).args(payload).spawn() {
             Ok(mut child) => {
                 std::thread::spawn(move || {
                     let _ = child.wait();
@@ -111,7 +115,7 @@ fn launch_linux(operation: Operation, target: &str, read_only: bool) -> Result<(
             Err(e) => return Err(format!("Could not start {terminal}: {e}")),
         }
     }
-    Err("Install a terminal (x-terminal-emulator, gnome-terminal, konsole, xfce4-terminal or xterm) to perform disk operations.".into())
+    Err("Install a terminal on the host (x-terminal-emulator, gnome-terminal, konsole, kgx, ptyxis, xfce4-terminal or xterm) to perform disk operations.".into())
 }
 
 #[cfg(any(windows, test))]

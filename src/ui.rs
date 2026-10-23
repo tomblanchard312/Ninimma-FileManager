@@ -6727,13 +6727,14 @@ fn open_terminal(dir: &Path) -> Result<(), String> {
         ] {
             list.push((prog.to_string(), args));
         }
-        list.into_iter()
-            .map(|(prog, args)| {
-                let mut c = Command::new(prog);
-                c.args(args).current_dir(dir);
-                c
-            })
-            .collect()
+        let mut attempts = Vec::new();
+        for (prog, args) in list {
+            if let Some(mut command) = crate::terminal::command(&prog, Some(dir))? {
+                command.args(args);
+                attempts.push(command);
+            }
+        }
+        attempts
     };
     for mut cmd in attempts {
         if cmd.spawn().is_ok() {
