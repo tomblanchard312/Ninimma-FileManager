@@ -126,6 +126,8 @@ fn run(renderer: eframe::Renderer, arg_path: Option<PathBuf>) -> eframe::Result<
             // with its icon; the Flatpak build sets its reverse-DNS id.
             .with_app_id(option_env!("NINIMMA_APP_ID").unwrap_or("ninimma"))
             .with_icon(app_icon()),
+        // Preserve file-only paste shortcuts when the clipboard has no text.
+        clipboard_shortcuts: false,
         persist_window: true,
         renderer,
         ..Default::default()
@@ -225,6 +227,10 @@ impl NinimmaApp {
 }
 
 impl eframe::App for NinimmaApp {
+    fn raw_input_hook(&mut self, ctx: &egui::Context, input: &mut egui::RawInput) {
+        system_clipboard::prepare_input(ctx, input);
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         if !self.fitted {
             let (outer, inner, monitor) = ui.ctx().input(|i| {

@@ -312,5 +312,5 @@ native release tag. Its attestation identifies the packaging tag and source comm
 Run the workflow from that packaging tag, attaching to the native release:
 
 ```sh
-gh workflow run flatpak.yml --ref flatpak-v0.1.4 -f tag=v0.1.4
+gh workflow run flatpak.yml --ref flatpak-v0.1.5 -f tag=v0.1.5
 ```

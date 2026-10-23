@@ -345,7 +345,18 @@ fn copy_paste_duplicates_files_explorer_style() {
     let mut h = harness(dir.path());
     h.get_by_label("notes.txt").click();
     h.run_steps(2);
-    h.event(Event::Copy);
+    let mut input = egui::RawInput::default();
+    input.events.push(Event::Key {
+        key: Key::C,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: Modifiers::COMMAND,
+    });
+    crate::system_clipboard::prepare_input(&h.ctx, &mut input);
+    for event in input.events {
+        h.event(event);
+    }
     h.run_steps(2);
     h.key_press_modifiers(Modifiers::COMMAND, Key::V);
     h.run_steps(1);
@@ -473,6 +484,27 @@ fn enter_in_address_bar_navigates_without_opening_selection() {
 
     assert_eq!(h.state().fs.get_current_path(), sub);
     assert!(h.state().ui.opened.is_empty());
+}
+
+#[test]
+fn address_clipboard_events_edit_text_without_copying_selected_files() {
+    let dir = picture_folder();
+    let mut h = harness(dir.path());
+    h.get_by_label("notes.txt").click();
+    h.run_steps(2);
+    h.key_press_modifiers(Modifiers::COMMAND, Key::L);
+    h.run_steps(3);
+    h.event(Event::Copy);
+    h.step();
+    assert!(h.output().platform_output.commands.iter().any(
+        |c| matches!(c, egui::OutputCommand::CopyText(t) if t == &dir.path().to_string_lossy())
+    ));
+    assert!(h.state().ui.clipboard.is_none());
+    h.event(Event::Paste("/tmp/pasted address".into()));
+    h.step();
+    assert_eq!(h.state().ui.address_text, "/tmp/pasted address");
+    assert_eq!(h.state().fs.get_current_path(), dir.path());
+    assert!(h.state().ui.jobs.is_empty());
 }
 
 #[test]
@@ -2430,4 +2462,38 @@ fn readme_smart_search_surveying_equipment() {
     drop(h);
     std::fs::remove_file(model).unwrap();
     println!("Screenshot: {}", output.display());
+}
+
+#[test]
+fn windows_shift_delete_still_requires_confirmation_in_file_view() {
+    let dir = picture_folder();
+    let mut h = harness(dir.path());
+    h.ctx.set_os(egui::os::OperatingSystem::Windows);
+    h.get_by_label("notes.txt").click();
+    h.run_steps(2);
+    let mut input = egui::RawInput::default();
+    input.events.push(Event::Key {
+        key: Key::Delete,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: Modifiers::SHIFT,
+    });
+    crate::system_clipboard::prepare_input(&h.ctx, &mut input);
+    for event in input.events {
+        h.event(event);
+    }
+    h.run_steps(2);
+    assert!(matches!(
+        &h.state().ui.dialog,
+        Some(Dialog::ConfirmDelete { .. })
+    ));
+    assert!(
+        h.state().ui.clipboard.is_none(),
+        "Shift+Delete must not cut files"
+    );
+    assert!(
+        dir.path().join("notes.txt").exists(),
+        "confirmation has not been accepted"
+    );
 }

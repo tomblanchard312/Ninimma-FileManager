@@ -22,3 +22,5 @@ Attestations do not replace Windows or Apple code signing.
 Windows release builds use the GUI subsystem and a statically linked C/C++ runtime. Installer validation checks the executable headers, runtime imports, version, Start menu shortcut, GUI startup, and uninstall behavior.
 
 Version 0.1.4 fixes Flatpak host-terminal discovery for VHD/VHDX operations and Open in Terminal. Software-center metadata now correctly advertises desktop displays and touch input. ctutils is updated to 0.4.4 to address its security advisory.
+
+Version 0.1.5 restores OS clipboard integration after the egui 0.37 update. Address-bar text can be copied and pasted between applications. Keyboard cut/copy/paste remains available for file selections, including file-only clipboard contents, while focused text fields retain normal editing behavior.

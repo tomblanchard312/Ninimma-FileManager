@@ -64,6 +64,10 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.1.5" date="2026-10-23">
+      <url type="details">https://github.com/tomblanchard312/Ninimma-FileManager/releases/tag/v0.1.5</url>
+      <description><p>Restore system clipboard access for address-bar text and keyboard cut, copy, and paste for files.</p></description>
+    </release>
     <release version="0.1.4" date="2026-10-23">
       <url type="details">https://github.com/tomblanchard312/Ninimma-FileManager/releases/tag/v0.1.4</url>
       <description><p>Security dependency updates and fixes for Flatpak host terminals and hardware compatibility metadata.</p></description>
