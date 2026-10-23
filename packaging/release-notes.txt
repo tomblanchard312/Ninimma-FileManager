@@ -18,3 +18,5 @@ This release updates the TLS trust dependencies and ZIP parsing to address the c
 Installers and SHA256SUMS have GitHub build provenance attestations. Verify a downloaded file with:
   gh attestation verify DOWNLOAD -R tomblanchard312/Ninimma-FileManager
 Attestations do not replace Windows or Apple code signing.
+
+Windows release builds use the GUI subsystem and a statically linked C/C++ runtime. Installer validation checks the executable headers, runtime imports, version, Start menu shortcut, GUI startup, and uninstall behavior.

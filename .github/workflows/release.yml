@@ -134,7 +134,7 @@ jobs:
     needs: validate
     runs-on: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && 'ninimma-freebsd' || 'ubuntu-latest' }}
     strategy:
-      max-parallel: 1
+      max-parallel: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && 1 || 2 }}
       fail-fast: false
       matrix:
         release: ["14", "15"]
