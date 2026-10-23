@@ -176,6 +176,9 @@ pub(crate) fn extract_pptx(path: &Path) -> Option<String> {
 
     let mut slides: Vec<(u32, String)> = archive
         .file_names()
+        .collect::<Result<Vec<_>, _>>()
+        .ok()?
+        .into_iter()
         .filter_map(|n| {
             let num = n
                 .strip_prefix("ppt/slides/slide")?
@@ -221,7 +224,13 @@ fn extract_office_xml(
 ) -> Option<String> {
     let file = File::open(path).ok()?;
     let mut archive = zip::ZipArchive::new(BufReader::new(file)).ok()?;
-    let name = archive.file_names().find(|n| part(n))?.to_string();
+    let name = archive
+        .file_names()
+        .collect::<Result<Vec<_>, _>>()
+        .ok()?
+        .into_iter()
+        .find(|n| part(n))?
+        .to_string();
     let mut xml = String::new();
     archive
         .by_name(&name)

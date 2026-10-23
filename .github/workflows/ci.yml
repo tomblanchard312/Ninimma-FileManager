@@ -1,6 +1,7 @@
 # Ninimma modification: independent GitHub-hosted validation.
 name: CI
 on:
+  workflow_call:
   push:
     branches: [main]
   pull_request:

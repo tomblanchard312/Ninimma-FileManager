@@ -238,6 +238,9 @@ fn read_pptx(path: &Path, limits: &Limits, deadline: Instant) -> Result<String, 
     let mut archive = open_zip(path)?;
     let mut slides: Vec<(u32, String)> = archive
         .file_names()
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| "unreadable zip")?
+        .into_iter()
         .filter_map(|n| {
             Some((
                 n.strip_prefix("ppt/slides/slide")?

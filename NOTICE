@@ -133,3 +133,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+Candle core 0.11.0 (Hugging Face and contributors) is included in vendor/candle-core.
+Source: https://crates.io/crates/candle-core/0.11.0
+Distributed here under Apache License 2.0 (LICENSE).
+Ninimma modification: its ZIP dependency is upgraded from 8.6.0 to 9.0.5
+to remove the vulnerable dependency; ZIP filename errors are propagated in npy.rs
+and pickle.rs, and deprecated numeric constants are updated in cpu/erf.rs.

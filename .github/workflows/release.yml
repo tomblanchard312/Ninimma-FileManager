@@ -9,7 +9,12 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  quality:
+    uses: ./.github/workflows/ci.yml
+  audit:
+    uses: ./.github/workflows/security.yml
   validate:
+    needs: [quality, audit]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -62,6 +67,14 @@ jobs:
           & "$installed\ninimma.exe" --version
           if ($LASTEXITCODE -ne 0) { throw 'Installed app failed' }
           if (!(Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Ninimma\Ninimma.lnk")) { throw 'Shortcut missing' }
+          $app = Start-Process -FilePath "$installed\ninimma.exe" -ArgumentList $env:TEMP -PassThru -RedirectStandardOutput "$env:TEMP\ninimma-out.log" -RedirectStandardError "$env:TEMP\ninimma-error.log"
+          Start-Sleep -Seconds 8
+          if ($app.HasExited) {
+            Get-Content "$env:TEMP\ninimma-error.log"
+            throw 'Installed GUI exited early'
+          }
+          Stop-Process -Id $app.Id
+          $app.WaitForExit()
           $p = Start-Process -FilePath "$installed\Uninstall.exe" -ArgumentList '/S', "_?=$installed" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw 'Uninstall failed' }
           if (Test-Path "$installed\ninimma.exe") { throw 'App left after uninstall' }
@@ -72,14 +85,16 @@ jobs:
           if-no-files-found: error
   macos:
     needs: validate
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - target: aarch64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
             arch: arm64
-          - target: x86_64-apple-darwin
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
             arch: x64
     steps:
       - uses: actions/checkout@v7
@@ -88,6 +103,7 @@ jobs:
           targets: ${{ matrix.target }}
       - run: cargo build --locked --release --target ${{ matrix.target }}
       - run: bash packaging/macos/build-dmg.sh '${{ matrix.target }}' '${{ matrix.arch }}'
+      - run: bash packaging/macos/install-smoke-test.sh 'ninimma-macos-${{ matrix.arch }}.dmg'
       - uses: actions/upload-artifact@v7
         with:
           name: macos-${{ matrix.arch }}
@@ -132,7 +148,7 @@ jobs:
           path: target/freebsd/*.pkg
           if-no-files-found: error
   publish:
-    needs: [linux, windows, macos, freebsd]
+    needs: [quality, audit, linux, windows, macos, freebsd]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -151,6 +167,13 @@ jobs:
         uses: actions/attest@v4
         with:
           subject-path: 'artifacts/*'
+      - name: Verify every attestation before publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for asset in artifacts/*; do
+            gh attestation verify "$asset" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" --source-ref "$GITHUB_REF"
+          done
       - name: Publish installers
         env:
           GH_TOKEN: ${{ github.token }}
