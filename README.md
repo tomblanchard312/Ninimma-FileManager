@@ -295,8 +295,9 @@ Modified source files are marked with Ninimma modification notices.
 [Suggest an idea or report a bug](https://github.com/tomblanchard312/Ninimma-FileManager/issues/new/choose).
 Contributors work through forks and reviewed pull requests. See the
 [contribution policy](.github/CONTRIBUTING.md) and [security policy](.github/SECURITY.md).
-Future releases built with the attestation-enabled workflows include GitHub build
-provenance. Verify a downloaded installer with:
+Published installers and checksum files include GitHub build provenance attestations.
+`SHA256SUMS` covers the native installers; the optional Flatpak has a separate
+`ninimma-linux-x64.flatpak.sha256` checksum file. Verify a downloaded file with:
 
 ```sh
 gh attestation verify DOWNLOAD -R tomblanchard312/Ninimma-FileManager

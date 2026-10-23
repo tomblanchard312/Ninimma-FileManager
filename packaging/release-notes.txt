@@ -11,11 +11,11 @@ On Linux, Help > About > Make default file manager is optional. Restore previous
 
 Windows and macOS installers are unsigned. macOS packages are not notarized. Flatpak is experimental and distributed separately when its build passes. See README for platform limitations and optional helpers.
 
-SHA256SUMS covers all attached installer packages. These are integrity checksums, not signatures.
+SHA256SUMS covers the native installer packages. The optional Flatpak bundle has its own ninimma-linux-x64.flatpak.sha256 file. These are integrity checksums, not signatures.
 
 This release updates the TLS trust dependencies and ZIP parsing to address the current RustSec vulnerability findings. The Candle source is included with a small ZIP 9 compatibility patch until upstream publishes a compatible release.
 
-Installers and SHA256SUMS have GitHub build provenance attestations. Verify a downloaded file with:
+Installers and their checksum files have GitHub build provenance attestations. Verify a downloaded file with:
   gh attestation verify DOWNLOAD -R tomblanchard312/Ninimma-FileManager
 Attestations do not replace Windows or Apple code signing.
 
