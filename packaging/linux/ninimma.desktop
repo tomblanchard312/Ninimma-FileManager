@@ -1,0 +1,22 @@
+# Ninimma modification: independent project packaging and branding.
+[Desktop Entry]
+Type=Application
+Name=Ninimma
+GenericName=File Manager
+Comment=Browse files with large thumbnails, bulk image rotation and Explorer-style shortcuts
+Exec=ninimma %F
+Icon=ninimma
+Terminal=false
+Categories=System;FileTools;FileManager;Core;
+MimeType=inode/directory;
+Keywords=folder;manager;explore;files;thumbnails;
+StartupWMClass=ninimma
+Actions=MakeDefault;RestoreDefault;
+
+[Desktop Action MakeDefault]
+Name=Make default file manager
+Exec=ninimma --make-default
+
+[Desktop Action RestoreDefault]
+Name=Restore previous default
+Exec=ninimma --restore-default

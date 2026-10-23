@@ -1,0 +1,44 @@
+# Ninimma modification: optional standalone Flatpak build, separate from native releases.
+name: Flatpak
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build and attach the bundle to
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  flatpak:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+      - run: sudo apt-get update && sudo apt-get install -y flatpak flatpak-builder
+      - run: flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+      - run: flatpak-builder --user --disable-rofiles-fuse --force-clean --install-deps-from=flathub --repo=flatpak-repo target/flatpak packaging/flatpak/io.github.tomblanchard312.ninimma.yml
+      - run: flatpak build-bundle flatpak-repo ninimma-linux-x64.flatpak io.github.tomblanchard312.ninimma --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo
+      - uses: actions/upload-artifact@v7
+        with:
+          name: flatpak
+          path: ninimma-linux-x64.flatpak
+          if-no-files-found: error
+  attach:
+    needs: flatpak
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: flatpak
+      - name: Attach bundle and checksum to existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          sha256sum ninimma-linux-x64.flatpak > ninimma-linux-x64.flatpak.sha256
+          gh release upload "$RELEASE_TAG" ninimma-linux-x64.flatpak ninimma-linux-x64.flatpak.sha256 --clobber

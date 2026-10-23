@@ -1,0 +1,90 @@
+# Ninimma modification: independent project packaging and branding.
+# Flatpak build of Ninimma. A file manager needs the whole filesystem,
+# so the sandbox is deliberately broad (see README.md).
+#
+# Local build (from the repository root):
+#   flatpak run org.flatpak.Builder --user --install --force-clean \
+#       --state-dir=target/flatpak-state target/flatpak \
+#       packaging/flatpak/io.github.tomblanchard312.ninimma.yml
+#
+# Cargo fetches crates during the build here (build-args --share=network).
+# Flathub builds offline: its submission swaps that for a cargo-sources.json
+# made by flatpak-cargo-generator and a git source pinned to a release tag.
+app-id: io.github.tomblanchard312.ninimma
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+  # libclang, for llama.cpp's bindings.
+  - org.freedesktop.Sdk.Extension.llvm21
+command: ninimma
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  # Browsing and managing files anywhere is the app's job.
+  - --filesystem=host
+  # Flatpak keeps the runtime's own /usr, /etc and /lib at those paths; the
+  # host's are read-only under /run/host (see README.md).
+  - --filesystem=host-os:ro
+  - --filesystem=host-etc:ro
+  # Removable drives and network mounts.
+  - --filesystem=/media
+  - --filesystem=/run/media
+  - --filesystem=/mnt
+  # Trash for files under the home folder.
+  - --filesystem=xdg-data/Trash
+  # Model downloads for smart search (only when the user asks).
+  - --share=network
+  # Search-index key in GNOME Keyring or KWallet.
+  - --talk-name=org.freedesktop.secrets
+  # Answering "Show in folder" from browsers.
+  - --own-name=org.freedesktop.FileManager1
+  # Open in Terminal, Open with and disk tools run on the host.
+  - --talk-name=org.freedesktop.Flatpak
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm21/bin
+  prepend-ld-library-path: /usr/lib/sdk/llvm21/lib
+  env:
+    CARGO_HOME: /run/build/ninimma/cargo
+    LIBCLANG_PATH: /usr/lib/sdk/llvm21/lib
+    # Wayland app id = the exported desktop file's name.
+    NINIMMA_APP_ID: io.github.tomblanchard312.ninimma
+modules:
+  - name: ninimma
+    buildsystem: simple
+    build-options:
+      build-args:
+        - --share=network
+    build-commands:
+      # llama.cpp's bindings need the C compiler's built-in headers.
+      - BINDGEN_EXTRA_CLANG_ARGS="-I$(gcc -print-file-name=include)" cargo build --release --locked
+      - install -Dm755 target/release/ninimma /app/bin/ninimma
+      - install -Dm644 LICENSE /app/share/licenses/ninimma/LICENSE
+      - install -Dm644 NOTICE /app/share/licenses/ninimma/NOTICE
+      - install -Dm644 packaging/icons/LICENSE-lucide /app/share/licenses/ninimma/LICENSE-lucide
+      - >-
+        sed -e 's/^Icon=ninimma$/Icon=io.github.tomblanchard312.ninimma/' -e '/^Actions=/d' -e '/^\[Desktop Action/,$d'
+        packaging/linux/ninimma.desktop
+        > ninimma.desktop.tmp
+      - install -Dm644 ninimma.desktop.tmp /app/share/applications/io.github.tomblanchard312.ninimma.desktop
+      - >-
+        sed -e 's|<launchable type="desktop-id">ninimma.desktop</launchable>|<launchable type="desktop-id">io.github.tomblanchard312.ninimma.desktop</launchable>|'
+        -e 's|<icon type="stock">ninimma</icon>|<icon type="stock">io.github.tomblanchard312.ninimma</icon>|'
+        packaging/linux/io.github.tomblanchard312.ninimma.metainfo.xml
+        > metainfo.tmp
+      - install -Dm644 metainfo.tmp /app/share/metainfo/io.github.tomblanchard312.ninimma.metainfo.xml
+      - install -Dm644 assets/icon.svg /app/share/icons/hicolor/scalable/apps/io.github.tomblanchard312.ninimma.svg
+      - >-
+        for size in 16 24 32 48 64 128 256 512; do
+        install -Dm644 assets/icons/ninimma-$size.png
+        /app/share/icons/hicolor/${size}x${size}/apps/io.github.tomblanchard312.ninimma.png;
+        done
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - target
+          - .git

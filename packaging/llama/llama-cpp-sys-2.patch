@@ -1,0 +1,63 @@
+--- a/build.rs
++++ b/build.rs
+@@ -23,6 +23,8 @@
+     Apple(AppleVariant),
+     Linux,
+     Android,
++    // FreeBSD builds like Linux, except that its C++ library is libc++.
++    FreeBsd,
+ }
+ 
+ macro_rules! debug_log {
+@@ -80,6 +82,8 @@
+         Ok((TargetOs::Android, target))
+     } else if target.contains("linux") {
+         Ok((TargetOs::Linux, target))
++    } else if target.contains("freebsd") {
++        Ok((TargetOs::FreeBsd, target))
+     } else {
+         Err(target)
+     }
+@@ -121,7 +125,7 @@
+                 ".a"
+             }
+         }
+-        TargetOs::Linux | TargetOs::Android => {
++        TargetOs::Linux | TargetOs::Android | TargetOs::FreeBsd => {
+             if shared {
+                 ".so"
+             } else {
+@@ -132,6 +136,16 @@
+ }
+ 
+ fn extract_lib_names(dir_pattern: &Path, target_os: &TargetOs, shared: bool) -> Vec<PathBuf> {
++    // MinGW builds of ggml are named "ggml.a"; the search below and the
++    // linker want "libggml.a", so add those names.
++    if matches!(target_os, TargetOs::Windows(WindowsVariant::Other)) && !shared {
++        for entry in glob(dir_pattern.join("*.a").to_str().unwrap()).unwrap().flatten() {
++            let name = entry.file_name().unwrap().to_str().unwrap().to_string();
++            if !name.starts_with("lib") {
++                let _ = std::fs::copy(&entry, entry.with_file_name(format!("lib{name}")));
++            }
++        }
++    }
+     let pattern = dir_pattern.join(format!(
+         "{}*{}",
+         lib_prefix(target_os, shared),
+@@ -901,7 +915,7 @@
+                     config.cxxflag("/FS");
+                 }
+             }
+-            TargetOs::Linux => {
++            TargetOs::Linux | TargetOs::FreeBsd => {
+                 // If we are not using system provided vulkan SDK, add vulkan libs for linking
+                 if let Ok(vulkan_path) = env::var("VULKAN_SDK") {
+                     let vulkan_lib_path = Path::new(&vulkan_path).join("lib");
+@@ -1348,6 +1362,7 @@
+                 println!("cargo:rustc-link-lib=dylib=stdc++");
+             }
+         }
++        TargetOs::FreeBsd => println!("cargo:rustc-link-lib=dylib=c++"),
+         TargetOs::Apple(ref variant) => {
+             println!("cargo:rustc-link-lib=framework=Foundation");
+             // watchOS has no Metal; skip the Metal frameworks there.

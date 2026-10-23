@@ -1,0 +1,187 @@
+# Ninimma modification: independent project packaging and branding.
+[package]
+name = "ninimma"
+version = "0.1.0"
+edition = "2021"
+description = "Fast file manager with large thumbnails, bulk image rotation, tabs and Windows Explorer shortcuts"
+license = "Apache-2.0"
+repository = "https://github.com/tomblanchard312/Ninimma-FileManager"
+authors = ["tomblanchard312 <tomblanchard3@gmail.com>"]
+readme = "README.md"
+
+# Linux packages: `cargo deb` and `cargo generate-rpm` (see README).
+# The window system libraries are loaded at runtime (dlopen), so automatic
+# dependency detection can't see them; they're listed explicitly.
+[package.metadata.deb]
+name = "ninimma"
+section = "utils"
+priority = "optional"
+extended-description = """\
+A cross-platform file manager that brings the Windows Explorer features \
+Linux file managers lack: real large thumbnails with Ctrl + mouse wheel \
+icon sizing, lossless bulk image rotation, tabs, undo/redo, drag and drop \
+and Explorer's keyboard shortcuts."""
+license-file = ["LICENSE", "0"]
+depends = "$auto, xdg-utils, libx11-6, libx11-xcb1, libxkbcommon0, libxkbcommon-x11-0, libxcursor1, libxi6, libxrender1, libegl1, libgl1"
+recommends = "libwayland-client0, libwayland-egl1"
+suggests = "ffmpeg, poppler-utils, imagemagick"
+assets = [
+    ["target/release/ninimma", "usr/bin/", "755"],
+    ["packaging/linux/ninimma.desktop", "usr/share/applications/", "644"],
+    ["packaging/linux/io.github.tomblanchard312.ninimma.metainfo.xml", "usr/share/metainfo/", "644"],
+    ["assets/icon.svg", "usr/share/icons/hicolor/scalable/apps/ninimma.svg", "644"],
+    ["assets/icons/ninimma-16.png", "usr/share/icons/hicolor/16x16/apps/ninimma.png", "644"],
+    ["assets/icons/ninimma-24.png", "usr/share/icons/hicolor/24x24/apps/ninimma.png", "644"],
+    ["assets/icons/ninimma-32.png", "usr/share/icons/hicolor/32x32/apps/ninimma.png", "644"],
+    ["assets/icons/ninimma-48.png", "usr/share/icons/hicolor/48x48/apps/ninimma.png", "644"],
+    ["assets/icons/ninimma-64.png", "usr/share/icons/hicolor/64x64/apps/ninimma.png", "644"],
+    ["assets/icons/ninimma-128.png", "usr/share/icons/hicolor/128x128/apps/ninimma.png", "644"],
+    ["assets/icons/ninimma-256.png", "usr/share/icons/hicolor/256x256/apps/ninimma.png", "644"],
+    ["assets/icons/ninimma-512.png", "usr/share/icons/hicolor/512x512/apps/ninimma.png", "644"],
+    ["README.md", "usr/share/doc/ninimma/README.md", "644"],
+    ["NOTICE", "usr/share/doc/ninimma/NOTICE", "644"],
+    ["packaging/icons/LICENSE-lucide", "usr/share/doc/ninimma/LICENSE-lucide", "644"],
+]
+
+[package.metadata.generate-rpm]
+summary = "Fast file manager with large thumbnails, bulk image rotation and tabs"
+url = "https://github.com/tomblanchard312/Ninimma-FileManager"
+assets = [
+    { source = "target/release/ninimma", dest = "/usr/bin/ninimma", mode = "755" },
+    { source = "packaging/linux/ninimma.desktop", dest = "/usr/share/applications/ninimma.desktop", mode = "644" },
+    { source = "packaging/linux/io.github.tomblanchard312.ninimma.metainfo.xml", dest = "/usr/share/metainfo/io.github.tomblanchard312.ninimma.metainfo.xml", mode = "644" },
+    { source = "assets/icon.svg", dest = "/usr/share/icons/hicolor/scalable/apps/ninimma.svg", mode = "644" },
+    { source = "assets/icons/ninimma-16.png", dest = "/usr/share/icons/hicolor/16x16/apps/ninimma.png", mode = "644" },
+    { source = "assets/icons/ninimma-24.png", dest = "/usr/share/icons/hicolor/24x24/apps/ninimma.png", mode = "644" },
+    { source = "assets/icons/ninimma-32.png", dest = "/usr/share/icons/hicolor/32x32/apps/ninimma.png", mode = "644" },
+    { source = "assets/icons/ninimma-48.png", dest = "/usr/share/icons/hicolor/48x48/apps/ninimma.png", mode = "644" },
+    { source = "assets/icons/ninimma-64.png", dest = "/usr/share/icons/hicolor/64x64/apps/ninimma.png", mode = "644" },
+    { source = "assets/icons/ninimma-128.png", dest = "/usr/share/icons/hicolor/128x128/apps/ninimma.png", mode = "644" },
+    { source = "assets/icons/ninimma-256.png", dest = "/usr/share/icons/hicolor/256x256/apps/ninimma.png", mode = "644" },
+    { source = "assets/icons/ninimma-512.png", dest = "/usr/share/icons/hicolor/512x512/apps/ninimma.png", mode = "644" },
+    { source = "README.md", dest = "/usr/share/doc/ninimma/README.md", mode = "644", doc = true },
+    { source = "LICENSE", dest = "/usr/share/licenses/ninimma/LICENSE", mode = "644", doc = true },
+    { source = "NOTICE", dest = "/usr/share/licenses/ninimma/NOTICE", mode = "644", doc = true },
+    { source = "packaging/icons/LICENSE-lucide", dest = "/usr/share/licenses/ninimma/LICENSE-lucide", mode = "644", doc = true },
+]
+post_install_script = "gtk-update-icon-cache -q -t /usr/share/icons/hicolor 2>/dev/null || :; update-desktop-database -q /usr/share/applications 2>/dev/null || :"
+post_uninstall_script = "gtk-update-icon-cache -q -t /usr/share/icons/hicolor 2>/dev/null || :; update-desktop-database -q /usr/share/applications 2>/dev/null || :"
+
+# Library sonames rather than package names, so one RPM works on Fedora,
+# RHEL and openSUSE alike.
+[package.metadata.generate-rpm.requires]
+xdg-utils = "*"
+"libX11.so.6()(64bit)" = "*"
+"libX11-xcb.so.1()(64bit)" = "*"
+"libxkbcommon.so.0()(64bit)" = "*"
+"libxkbcommon-x11.so.0()(64bit)" = "*"
+"libXcursor.so.1()(64bit)" = "*"
+"libXi.so.6()(64bit)" = "*"
+"libXrender.so.1()(64bit)" = "*"
+"libEGL.so.1()(64bit)" = "*"
+"libGL.so.1()(64bit)" = "*"
+
+[package.metadata.generate-rpm.recommends]
+"libwayland-client.so.0()(64bit)" = "*"
+"libwayland-egl.so.1()(64bit)" = "*"
+
+[package.metadata.generate-rpm.suggests]
+ffmpeg = "*"
+poppler-utils = "*"
+ImageMagick = "*"
+
+[features]
+# Optional renderer for the reproducible README screenshot test.
+readme-screenshot = ["egui_kittest/wgpu"]
+default = ["smart-search"]
+# Meaning-based search and OCR with local GGUF models through llama.cpp.
+smart-search = ["dep:llama-cpp-2", "llama-cpp-2/mtmd", "dep:candle-core", "dep:candle-nn", "dep:candle-transformers", "dep:tokenizers", "dep:rayon"]
+# GPU acceleration for the models (optional; CPU is the default).
+gpu-vulkan = ["smart-search", "llama-cpp-2/vulkan"]
+gpu-metal = ["smart-search", "llama-cpp-2/metal"]
+
+[dependencies]
+# x11 + wayland are required for eframe to build on Linux at all when default
+# features are off. accesskit exposes the UI to screen readers; persistence
+# remembers window size and view settings between runs.
+eframe = { version = "0.36", default-features = false, features = ["default_fonts", "glow", "x11", "wayland", "accesskit", "persistence"] }
+egui = { version = "0.36", features = ["default_fonts"] }
+serde = { version = "1", features = ["derive"] }
+image = "0.25"
+notify = "8.2"              # Auto-refresh when the current folder changes on disk
+arboard = { version = "3.6", default-features = false, features = ["wayland-data-control"] }  # Files on the system clipboard (copy/paste with other apps); native Wayland too
+trash = { version = "5", features = ["chrono"] }  # Move to Recycle Bin / Trash instead of permanent delete
+chrono = "0.4"
+regex = "1"                 # Bulk rename: find and replace with regular expressions
+open = "5"
+calamine = "0.36"          # Excel file reading
+zip = { version = "8.2", default-features = false, features = ["deflate-flate2-zlib-rs"] }  # docx/pptx are zip files; pure-Rust deflate only
+quick-xml = "0.42"          # For parsing Office XML
+
+raw-window-handle = "0.6"   # Window handle for starting OS drag-and-drop
+
+# Search index (opt-in). SQLCipher only: never plain SQLite, so an index can't
+# be written unencrypted. Its crypto comes from CommonCrypto on macOS, the
+# system libcrypto on Linux/FreeBSD, and a vendored OpenSSL on Windows.
+rusqlite = { version = "0.40", features = ["bundled-sqlcipher", "hooks"] }
+keyring-core = "1"          # OS credential store for the index key
+argon2 = "0.6"              # Passphrase fallback: key derivation
+chacha20poly1305 = "0.11"   # Passphrase fallback: wraps the index key
+getrandom = "0.4"           # Random index keys, salts and nonces
+zeroize = "1"               # Wipe keys and passphrases from memory
+kamadak-exif = "0.6"        # Photo date taken and GPS position, for search
+reverse_geocoder = "4"      # GPS -> nearest town/state/country, offline (GeoNames, CC BY 4.0)
+blake2 = "0.11"             # Content hashes, to re-embed only changed text
+# Smart search: GGUF models run in-process with llama.cpp (no server), CPU by
+# default. Needs CMake, a C++ compiler and libclang to build.
+llama-cpp-2 = { version = "0.1.159", default-features = false, optional = true }
+# Searching what's in pictures: CLIP in pure Rust (no second C++ runtime),
+# so it builds wherever the app does (MinGW, FreeBSD).
+candle-core = { version = "0.11", optional = true }
+candle-nn = { version = "0.11", optional = true }
+candle-transformers = { version = "0.11", optional = true }
+tokenizers = { version = "0.23", default-features = false, features = ["fancy-regex"], optional = true }
+rayon = { version = "1", optional = true }
+sha2 = "0.11"               # Verifies downloaded models before they're loaded
+ureq = { version = "3", default-features = false, features = ["rustls"] }  # Model downloads, on request only
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"                # statvfs for drive free space
+
+# Dragging files out to other apps: XDND on X11, OLE/AppKit via `drag` elsewhere.
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+x11rb = "0.14"
+# Secret Service (GNOME Keyring, KWallet) over pure-Rust D-Bus, for the
+# search-index key.
+zbus-secret-service-keyring-store = { version = "1", features = ["crypto-rust"] }
+# Answering "Show in folder" from browsers (org.freedesktop.FileManager1).
+zbus = "5"
+
+[target.'cfg(any(windows, target_os = "macos"))'.dependencies]
+drag = "2.1"
+
+# Credential stores for the search-index key: one per platform, nothing else.
+[target.'cfg(windows)'.dependencies]
+# Direct3D 12 rendering: Windows VMs often lack OpenGL 2 (glow stays as
+# the fallback).
+eframe = { version = "0.36", default-features = false, features = ["wgpu"] }
+windows-native-keyring-store = "1"   # Windows Credential Manager (DPAPI)
+rusqlite = { version = "0.40", features = ["bundled-sqlcipher-vendored-openssl"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Memory", "Win32_Storage_FileSystem", "Win32_System_Power", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store = { version = "1", features = ["keychain"] }   # login Keychain
+
+
+[dev-dependencies]
+tempfile = "3"
+egui_kittest = "0.36"
+ron = "0.12"                # eframe saves settings as RON; tests read old ones
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+# panic = "abort" is intentionally not set: thumbnail decoding relies on
+# catch_unwind so a malformed image can't take down the whole app.

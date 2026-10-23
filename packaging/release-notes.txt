@@ -1,0 +1,14 @@
+Ninimma is a desktop file manager derived from FileExplorer, with independent settings and packaging.
+
+Install:
+- Ubuntu, Debian, Mint and Zorin: download the .deb and open it with your software installer.
+- Fedora and openSUSE: use the .rpm.
+- Windows: run ninimma-windows-x64-setup.exe. It installs for your account and adds a Start menu shortcut.
+- macOS: choose arm64 (Apple Silicon) or x64 (Intel), open the .dmg and drag Ninimma to Applications.
+- Linux tarball: extract it and run install.sh for a per-user install.
+
+On Linux, Help > About > Make default file manager is optional. Restore previous default reverses it. Installation never changes your folder default automatically. Pin the application from your desktop's menu or running taskbar icon.
+
+Windows and macOS installers are unsigned. macOS packages are not notarized. Flatpak is experimental and distributed separately when its build passes. See README for platform limitations and optional helpers.
+
+SHA256SUMS covers all attached installer packages. These are integrity checksums, not signatures.

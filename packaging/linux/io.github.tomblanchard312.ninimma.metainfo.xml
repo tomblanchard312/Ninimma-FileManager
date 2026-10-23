@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Ninimma modification: independent app identity and release metadata. -->
+<!-- AppStream metadata for software centres (GNOME Software, Discover,
+     Flathub). Installed as /usr/share/metainfo/<id>.metainfo.xml; check with
+     appstreamcli validate. -->
+<component type="desktop-application">
+  <id>io.github.tomblanchard312.ninimma</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>Apache-2.0</project_license>
+  <name>Ninimma</name>
+  <summary>Browse files with large thumbnails, tabs and Explorer shortcuts</summary>
+  <developer id="io.github.tomblanchard312">
+    <name>Tom Blanchard</name>
+  </developer>
+  <description>
+    <p>
+      A fast file manager that brings the Windows Explorer features Linux file
+      managers lack: real large thumbnails with Ctrl + mouse wheel icon sizing,
+      lossless bulk image rotation, tabs, undo and redo, drag and drop, and
+      Explorer's keyboard shortcuts.
+    </p>
+    <ul>
+      <li>Icons from 32 to 256 pixels, tiles and details views, remembered per folder</li>
+      <li>Thumbnails for photos, videos, PDFs and HEIC, respecting EXIF orientation</li>
+      <li>Lossless bulk rotation of JPEG and other pictures</li>
+      <li>Undo and redo for rename, move, copy, delete to trash and rotate</li>
+      <li>Light, dark and high-contrast themes</li>
+      <li>Optional local search by meaning and text in pictures, with no cloud service</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">ninimma.desktop</launchable>
+  <icon type="stock">ninimma</icon>
+  <url type="homepage">https://github.com/tomblanchard312/Ninimma-FileManager</url>
+  <url type="bugtracker">https://github.com/tomblanchard312/Ninimma-FileManager/issues</url>
+  <url type="vcs-browser">https://github.com/tomblanchard312/Ninimma-FileManager</url>
+  <categories>
+    <category>System</category>
+    <category>FileManager</category>
+  </categories>
+  <keywords>
+    <keyword>folder</keyword>
+    <keyword>files</keyword>
+    <keyword>thumbnails</keyword>
+    <keyword>explorer</keyword>
+  </keywords>
+  <provides>
+    <binary>ninimma</binary>
+    <mediatype>inode/directory</mediatype>
+  </provides>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Smart search for surveying equipment in a demo collection</caption>
+      <image>https://raw.githubusercontent.com/tomblanchard312/Ninimma-FileManager/main/assets/screenshots/smart-search-surveying.png</image>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <releases>
+    <release version="0.1.0" date="2026-10-22">
+      <url type="details">https://github.com/tomblanchard312/Ninimma-FileManager/releases/tag/v0.1.0</url>
+    </release>
+  </releases>
+</component>

@@ -1,0 +1,135 @@
+Ninimma
+Derived from File Explorer by tomblanchard312.
+The Ninimma derivation changes branding, packaging, release automation, and desktop integration.
+Modified files carry a Ninimma modification notice.
+
+Original notices follow unchanged:
+
+File Explorer
+Copyright 2026 tomblanchard312
+https://github.com/tomblanchard312/fileexplorer
+
+This product includes software developed by tomblanchard312.
+
+Licensed under the Apache License, Version 2.0 (see the LICENSE file).
+Anyone redistributing this software, or a work derived from it, must keep
+this NOTICE file (or its contents) with the distribution, and must state
+which files they changed. See sections 4(a)-(d) of the license.
+
+Third-party components
+----------------------
+- Interface icons: Lucide 1.59.0 (https://lucide.dev), ISC License,
+  Copyright (c) 2026 Lucide Icons and Contributors; parts derived from
+  Feather (MIT), Copyright (c) 2013-present Cole Bemis. A subset is embedded
+  as assets/fonts/icons.ttf; the full license is in
+  packaging/icons/LICENSE-lucide.
+File Explorer is built with many open-source Rust crates, each under its
+own license (MIT, Apache-2.0, or similar); `cargo license` lists them. The
+optional search index adds these, which are compiled into the program:
+
+- SQLite (public domain), https://sqlite.org
+- SQLCipher Community Edition, Copyright (c) 2008-2020 Zetetic LLC,
+  BSD-style license (reproduced in full below),
+  https://www.zetetic.net/sqlcipher/
+- OpenSSL (Windows builds only, linked statically for SQLCipher's
+  encryption), Apache License 2.0, https://www.openssl.org
+  Linux and FreeBSD builds use the system's libcrypto; macOS builds use
+  Apple's CommonCrypto.
+- RustCrypto argon2, chacha20poly1305 and blake2 (MIT or Apache-2.0).
+- Place names for photo locations: GeoNames (https://www.geonames.org),
+  licensed under Creative Commons Attribution 4.0
+  (https://creativecommons.org/licenses/by/4.0/), via the reverse_geocoder
+  crate (MIT or Apache-2.0). The data is used unmodified.
+- kamadak-exif, for photo dates and positions, BSD-2-Clause license
+  (reproduced in full below).
+- llama.cpp and ggml (smart search), Copyright (c) 2023-2026 The ggml
+  authors, MIT License (reproduced in full below), linked statically via
+  the llama-cpp-2 crates (MIT or Apache-2.0).
+- Model downloads use ureq and rustls (MIT or Apache-2.0), ring (Apache-2.0
+  and ISC) and webpki-roots (CDLA-Permissive-2.0 for the root certificates).
+- The models themselves are not included; they are downloaded on request:
+  BGE small en v1.5 by BAAI (MIT License),
+  https://huggingface.co/BAAI/bge-small-en-v1.5, and granite-docling-258M
+  by IBM (Apache License 2.0), https://huggingface.co/ibm-granite/granite-docling-258M,
+  both in the GGUF conversions published by ggml-org, and Qwen2.5-0.5B-Instruct
+  by the Qwen team, Alibaba Cloud (Apache License 2.0),
+  https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct, in Qwen's own GGUF
+  conversion.
+- The keyring-core credential-store crates (MIT or Apache-2.0).
+
+SQLCipher license
+-----------------
+Copyright (c) 2008-2020 Zetetic LLC
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+    * Neither the name of the ZETETIC LLC nor the
+      names of its contributors may be used to endorse or promote products
+      derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY ZETETIC LLC ''AS IS'' AND ANY
+EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL ZETETIC LLC BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+kamadak-exif license
+--------------------
+Copyright (c) 2016-2023 KAMADA Ken'ichi.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGE.
+
+llama.cpp license
+-----------------
+MIT License
+
+Copyright (c) 2023-2026 The ggml authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

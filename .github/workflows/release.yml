@@ -1,0 +1,151 @@
+# Ninimma modification: independent installers, checksums and release publication.
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Require tag to match package version
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          test "$GITHUB_REF_NAME" = "v$version"
+  linux:
+    needs: validate
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: bash packaging/ci/build-linux-release.sh "${GITHUB_REF_NAME}"
+      - run: bash packaging/ci/install-smoke-test.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux
+          path: |
+            ninimma-linux-x64.tar.gz
+            *.deb
+            *.rpm
+          if-no-files-found: error
+  windows:
+    needs: validate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        shell: pwsh
+        run: |
+          $env:LIBCLANG_PATH = 'C:\Program Files\LLVM\bin'
+          cargo build --locked --release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & target/release/ninimma.exe --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build installer
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & 'C:\Program Files (x86)\NSIS\makensis.exe' /NOCD packaging/windows/ninimma.nsi
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Smoke test ordinary-user install and uninstall
+        shell: pwsh
+        run: |
+          $installed = Join-Path $env:LOCALAPPDATA 'Programs\Ninimma'
+          $p = Start-Process -FilePath .\ninimma-windows-x64-setup.exe -ArgumentList '/S' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw 'Install failed' }
+          & "$installed\ninimma.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw 'Installed app failed' }
+          if (!(Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Ninimma\Ninimma.lnk")) { throw 'Shortcut missing' }
+          $p = Start-Process -FilePath "$installed\Uninstall.exe" -ArgumentList '/S', "_?=$installed" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw 'Uninstall failed' }
+          if (Test-Path "$installed\ninimma.exe") { throw 'App left after uninstall' }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows
+          path: ninimma-windows-x64-setup.exe
+          if-no-files-found: error
+  macos:
+    needs: validate
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            arch: arm64
+          - target: x86_64-apple-darwin
+            arch: x64
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - run: cargo build --locked --release --target ${{ matrix.target }}
+      - run: bash packaging/macos/build-dmg.sh '${{ matrix.target }}' '${{ matrix.arch }}'
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos-${{ matrix.arch }}
+          path: '*.dmg'
+          if-no-files-found: error
+  freebsd:
+    needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        release: ["14", "15"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: vmactions/freebsd-vm@v1
+        with:
+          release: ${{ matrix.release }}
+          cpu: 2
+          usesh: true
+          copyback: false
+          envs: GITHUB_REF_NAME
+          prepare: |
+            pkg install -y curl cmake llvm libX11 libxkbcommon libXcursor libXi libXrender mesa-libs
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          run: |
+            . "$HOME/.cargo/env"
+            export LIBCLANG_PATH=$(ls -d /usr/local/llvm*/lib | sort -V | tail -n 1)
+            cfg=$(sh packaging/llama/patch-llama.sh)
+            cargo build --locked --release --config "$cfg"
+            sh packaging/freebsd/build-pkg.sh "${GITHUB_REF_NAME#v}" target/freebsd
+            for f in target/freebsd/ninimma-*.pkg; do
+              mv "$f" "${f%.pkg}-freebsd${{ matrix.release }}-amd64.pkg"
+            done
+            pkg add target/freebsd/*.pkg
+            /usr/local/bin/ninimma --version
+      - run: |
+          mkdir -p target/freebsd
+          scp "freebsd:${GITHUB_WORKSPACE}/target/freebsd/*.pkg" target/freebsd/
+      - uses: actions/upload-artifact@v7
+        with:
+          name: freebsd-${{ matrix.release }}
+          path: target/freebsd/*.pkg
+          if-no-files-found: error
+  publish:
+    needs: [linux, windows, macos, freebsd]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Checksums
+        working-directory: artifacts
+        run: sha256sum * > SHA256SUMS
+      - name: Publish installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" artifacts/* --verify-tag --title "Ninimma $GITHUB_REF_NAME" --notes-file packaging/release-notes.txt
