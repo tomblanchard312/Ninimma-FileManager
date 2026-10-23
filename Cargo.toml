@@ -104,7 +104,7 @@ gpu-metal = ["smart-search", "llama-cpp-2/metal"]
 # x11 + wayland are required for eframe to build on Linux at all when default
 # features are off. accesskit exposes the UI to screen readers; persistence
 # remembers window size and view settings between runs.
-eframe = { version = "0.36", default-features = false, features = ["default_fonts", "glow", "x11", "wayland", "accesskit", "persistence"] }
+eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "x11", "wayland", "accesskit", "persistence"] }
 egui = { version = "0.36", features = ["default_fonts"] }
 serde = { version = "1", features = ["derive"] }
 image = "0.25"
