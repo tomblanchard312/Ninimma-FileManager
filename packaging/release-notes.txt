@@ -1,26 +1,9 @@
-Ninimma is a desktop file manager derived from FileExplorer, with independent settings and packaging.
+Ninimma 0.1.6 synchronizes shared file-management features with FileExplorer while retaining Ninimma's own branding and installers.
 
-Install:
-- Ubuntu, Debian, Mint and Zorin: download the .deb and open it with your software installer.
-- Fedora and openSUSE: use the .rpm.
-- Windows: run ninimma-windows-x64-setup.exe. It installs for your account and adds a Start menu shortcut.
-- macOS: choose arm64 (Apple Silicon) or x64 (Intel), open the .dmg and drag Ninimma to Applications.
-- Linux tarball: extract it and run install.sh for a per-user install.
+- Add “Open file location in new tab” to search results. The new tab opens the containing folder and selects the result.
+- Retain the working system clipboard shortcuts and opt-in default file manager controls from 0.1.5.
+- Complete Lucide/Feather license distribution in the legacy Windows ZIP builder, with tests for ZIP contents and per-user notice installation.
 
-On Linux, Help > About > Make default file manager is optional. Restore previous default reverses it. Installation never changes your folder default automatically. Pin the application from your desktop's menu or running taskbar icon.
+The Ninimma Flatpak is attached to this release once its build, installation smoke test, checksums and GitHub artifact attestations have been verified. Restart Ninimma after updating.
 
-Windows and macOS installers are unsigned. macOS packages are not notarized. Flatpak is experimental and distributed separately when its build passes. See README for platform limitations and optional helpers.
-
-SHA256SUMS covers the native installer packages. The optional Flatpak bundle has its own ninimma-linux-x64.flatpak.sha256 file. These are integrity checksums, not signatures.
-
-This release updates the TLS trust dependencies and ZIP parsing to address the current RustSec vulnerability findings. The Candle source is included with a small ZIP 9 compatibility patch until upstream publishes a compatible release.
-
-Installers and their checksum files have GitHub build provenance attestations. Verify a downloaded file with:
-  gh attestation verify DOWNLOAD -R tomblanchard312/Ninimma-FileManager
-Attestations do not replace Windows or Apple code signing.
-
-Windows release builds use the GUI subsystem and a statically linked C/C++ runtime. Installer validation checks the executable headers, runtime imports, version, Start menu shortcut, GUI startup, and uninstall behavior.
-
-Version 0.1.4 fixes Flatpak host-terminal discovery for VHD/VHDX operations and Open in Terminal. Software-center metadata now correctly advertises desktop displays and touch input. ctutils is updated to 0.4.4 to address its security advisory.
-
-Version 0.1.5 restores OS clipboard integration after the egui 0.37 update. Address-bar text can be copied and pasted between applications. Keyboard cut/copy/paste remains available for file selections, including file-only clipboard contents, while focused text fields retain normal editing behavior.
+Native packages and checksum files are verified with GitHub artifact attestations. Windows and macOS installers are unsigned; attestations provide build provenance, not OS code signing.
