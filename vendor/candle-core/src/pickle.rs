@@ -1,3 +1,4 @@
+// Modified from Candle 0.11.0 for ZIP 9 compatibility and current Clippy; see NOTICE.
 //! Just enough pickle support to be able to read PyTorch checkpoints.
 // This hardcodes objects that are required for tensor reading, we may want to make this a bit more
 // composable/tensor agnostic at some point.

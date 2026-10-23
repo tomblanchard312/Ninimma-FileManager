@@ -1,3 +1,4 @@
+// Modified from Candle 0.11.0 for ZIP 9 compatibility and current Clippy; see NOTICE.
 //! Numpy support for tensors.
 //!
 //! The spec for the npy format can be found in
