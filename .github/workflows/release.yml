@@ -24,7 +24,7 @@ jobs:
           test "$GITHUB_REF_NAME" = "v$version"
   linux:
     needs: validate
-    runs-on: ninimma-linux
+    runs-on: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && 'ninimma-linux' || 'ubuntu-22.04' }}
     steps:
       - uses: actions/checkout@v7
       - run: bash packaging/ci/build-linux-release.sh "${GITHUB_REF_NAME}"
@@ -37,6 +37,7 @@ jobs:
             *.deb
             *.rpm
           if-no-files-found: error
+          retention-days: 1
   windows:
     needs: validate
     runs-on: windows-latest
@@ -83,6 +84,7 @@ jobs:
           name: windows
           path: ninimma-windows-x64-setup.exe
           if-no-files-found: error
+          retention-days: 1
   macos:
     needs: validate
     runs-on: ${{ matrix.os }}
@@ -109,9 +111,10 @@ jobs:
           name: macos-${{ matrix.arch }}
           path: '*.dmg'
           if-no-files-found: error
+          retention-days: 1
   freebsd:
     needs: validate
-    runs-on: ninimma-freebsd
+    runs-on: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && 'ninimma-freebsd' || 'ubuntu-latest' }}
     strategy:
       max-parallel: 1
       fail-fast: false
@@ -154,6 +157,7 @@ jobs:
           name: freebsd-${{ matrix.release }}
           path: target/freebsd/*.pkg
           if-no-files-found: error
+          retention-days: 1
       - name: Clean disposable FreeBSD build files
         if: always()
         env:

@@ -11,7 +11,7 @@ permissions:
   contents: read
 jobs:
   flatpak:
-    runs-on: ninimma-linux
+    runs-on: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && 'ninimma-linux' || 'ubuntu-22.04' }}
     steps:
       - name: Require release tag as workflow ref
         env:
@@ -34,6 +34,7 @@ jobs:
           name: flatpak
           path: ninimma-linux-x64.flatpak
           if-no-files-found: error
+          retention-days: 1
   attach:
     needs: flatpak
     runs-on: ubuntu-latest
