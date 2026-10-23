@@ -115,7 +115,7 @@ chrono = "0.4"
 regex = "1"                 # Bulk rename: find and replace with regular expressions
 open = "5"
 calamine = "0.36"          # Excel file reading
-zip = { version = "8.2", default-features = false, features = ["deflate-flate2-zlib-rs"] }  # docx/pptx are zip files; pure-Rust deflate only
+zip = { version = "9.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }  # docx/pptx are zip files; pure-Rust deflate only
 quick-xml = "0.42"          # For parsing Office XML
 
 raw-window-handle = "0.6"   # Window handle for starting OS drag-and-drop
