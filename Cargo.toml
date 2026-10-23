@@ -1,7 +1,7 @@
 # Ninimma modification: independent project packaging and branding.
 [package]
 name = "ninimma"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 description = "Fast file manager with large thumbnails, bulk image rotation, tabs and Windows Explorer shortcuts"
 license = "Apache-2.0"
@@ -104,7 +104,7 @@ gpu-metal = ["smart-search", "llama-cpp-2/metal"]
 # x11 + wayland are required for eframe to build on Linux at all when default
 # features are off. accesskit exposes the UI to screen readers; persistence
 # remembers window size and view settings between runs.
-eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "x11", "wayland", "accesskit", "persistence"] }
+eframe = { version = "0.37", default-features = false, features = ["clipboard", "default_fonts", "glow", "x11", "wayland", "accesskit", "persistence"] }
 egui = { version = "0.37", features = ["default_fonts"] }
 serde = { version = "1", features = ["derive"] }
 image = "0.25"
