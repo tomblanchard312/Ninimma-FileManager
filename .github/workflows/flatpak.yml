@@ -26,7 +26,7 @@ jobs:
           flatpak run org.flatpak.Builder --version
       - name: Build with the SDK-compatible Builder
         run: |
-          flatpak run --filesystem="$GITHUB_WORKSPACE" --filesystem="$RUNNER_TEMP" org.flatpak.Builder \
+          dbus-run-session -- flatpak run --filesystem="$GITHUB_WORKSPACE" --filesystem="$RUNNER_TEMP" org.flatpak.Builder \
             --user --disable-rofiles-fuse --force-clean --install-deps-from=flathub \
             --state-dir="$RUNNER_TEMP/ninimma-flatpak-state" --repo="$GITHUB_WORKSPACE/flatpak-repo" \
             "$GITHUB_WORKSPACE/target/flatpak" "$GITHUB_WORKSPACE/packaging/flatpak/io.github.tomblanchard312.ninimma.yml"

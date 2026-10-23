@@ -305,11 +305,11 @@ gh attestation verify DOWNLOAD -R tomblanchard312/Ninimma-FileManager
 
 These attestations do not replace operating-system code signing.
 
-Flatpak packaging uses a protected `flatpak-vVERSION` tag pointing to reviewed
-source with that Cargo version. This allows packaging fixes without rewriting the
+Flatpak packaging uses a protected `flatpak-vVERSION` tag (or `flatpak-vVERSION-rN`
+for packaging fixes) pointing to reviewed source with that Cargo version. This allows packaging fixes without rewriting the
 native release tag. Its attestation identifies the packaging tag and source commit.
 Run the workflow from that packaging tag, attaching to the native release:
 
 ```sh
-gh workflow run flatpak.yml --ref flatpak-v0.1.3 -f tag=v0.1.3
+gh workflow run flatpak.yml --ref flatpak-v0.1.3-r2 -f tag=v0.1.3
 ```
