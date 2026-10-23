@@ -227,8 +227,8 @@ impl NinimmaApp {
 }
 
 impl eframe::App for NinimmaApp {
-    fn raw_input_hook(&mut self, _ctx: &egui::Context, input: &mut egui::RawInput) {
-        system_clipboard::prepare_input(input);
+    fn raw_input_hook(&mut self, ctx: &egui::Context, input: &mut egui::RawInput) {
+        system_clipboard::prepare_input(ctx, input);
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {

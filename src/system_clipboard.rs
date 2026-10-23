@@ -13,11 +13,22 @@ use real as imp;
 
 // egui-winit otherwise consumes Ctrl+V even when a file-only clipboard
 // produces no text event, preventing the file manager's paste fallback.
-pub fn prepare_input(input: &mut egui::RawInput) {
-    translate_keys(&mut input.events, imp::text);
+pub fn prepare_input(ctx: &egui::Context, input: &mut egui::RawInput) {
+    translate_keys(
+        &mut input.events,
+        ctx.os(),
+        ctx.egui_wants_keyboard_input(),
+        imp::text,
+    );
 }
 
-fn translate_keys(events: &mut [egui::Event], mut text: impl FnMut() -> Option<String>) {
+fn translate_keys(
+    events: &mut [egui::Event],
+    os: egui::os::OperatingSystem,
+    typing: bool,
+    mut text: impl FnMut() -> Option<String>,
+) {
+    let windows = os == egui::os::OperatingSystem::Windows;
     use egui::{Event, Key};
     for event in events {
         let Event::Key {
@@ -32,17 +43,17 @@ fn translate_keys(events: &mut [egui::Event], mut text: impl FnMut() -> Option<S
         let command = modifiers.command_only();
         if *key == Key::Copy
             || (command && *key == Key::C)
-            || (cfg!(windows) && modifiers.ctrl && *key == Key::Insert)
+            || (windows && modifiers.ctrl && *key == Key::Insert)
         {
             *event = Event::Copy;
         } else if *key == Key::Cut
             || (command && *key == Key::X)
-            || (cfg!(windows) && modifiers.shift && *key == Key::Delete)
+            || (windows && typing && modifiers.shift && *key == Key::Delete)
         {
             *event = Event::Cut;
         } else if *key == Key::Paste
             || (command && *key == Key::V)
-            || (cfg!(windows) && modifiers.shift && *key == Key::Insert)
+            || (windows && modifiers.shift && *key == Key::Insert)
         {
             if let Some(contents) = text().filter(|s| !s.is_empty()) {
                 *event = Event::Paste(contents.replace("\r\n", "\n"));
@@ -156,7 +167,12 @@ mod keyboard_tests {
             key(Key::X, Modifiers::COMMAND),
             key(Key::V, Modifiers::COMMAND),
         ];
-        translate_keys(&mut events, || Some("/tmp/a\r\nb".into()));
+        translate_keys(
+            &mut events,
+            egui::os::OperatingSystem::Windows,
+            false,
+            || Some("/tmp/a\r\nb".into()),
+        );
         assert_eq!(
             events,
             [Event::Copy, Event::Cut, Event::Paste("/tmp/a\nb".into())]
@@ -164,7 +180,12 @@ mod keyboard_tests {
         for text in [None, Some(String::new())] {
             let original = key(Key::V, Modifiers::COMMAND);
             let mut events = [original.clone()];
-            translate_keys(&mut events, || text.clone());
+            translate_keys(
+                &mut events,
+                egui::os::OperatingSystem::Windows,
+                false,
+                || text.clone(),
+            );
             assert_eq!(
                 events,
                 [original],
@@ -185,9 +206,26 @@ mod keyboard_tests {
             released,
         ];
         let mut events = original.clone();
-        translate_keys(&mut events, || {
-            panic!("unrelated keys must not read the clipboard")
-        });
+        translate_keys(
+            &mut events,
+            egui::os::OperatingSystem::Windows,
+            false,
+            || panic!("unrelated keys must not read the clipboard"),
+        );
         assert_eq!(events, original);
+    }
+    #[test]
+    fn shift_delete_cuts_text_but_preserves_file_delete_confirmation() {
+        let key = key(Key::Delete, Modifiers::SHIFT);
+        for typing in [false, true] {
+            let mut events = [key.clone()];
+            translate_keys(
+                &mut events,
+                egui::os::OperatingSystem::Windows,
+                typing,
+                || None,
+            );
+            assert_eq!(events[0], if typing { Event::Cut } else { key.clone() });
+        }
     }
 }

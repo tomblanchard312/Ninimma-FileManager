@@ -353,7 +353,7 @@ fn copy_paste_duplicates_files_explorer_style() {
         repeat: false,
         modifiers: Modifiers::COMMAND,
     });
-    crate::system_clipboard::prepare_input(&mut input);
+    crate::system_clipboard::prepare_input(&h.ctx, &mut input);
     for event in input.events {
         h.event(event);
     }
@@ -2462,4 +2462,38 @@ fn readme_smart_search_surveying_equipment() {
     drop(h);
     std::fs::remove_file(model).unwrap();
     println!("Screenshot: {}", output.display());
+}
+
+#[test]
+fn windows_shift_delete_still_requires_confirmation_in_file_view() {
+    let dir = picture_folder();
+    let mut h = harness(dir.path());
+    h.ctx.set_os(egui::os::OperatingSystem::Windows);
+    h.get_by_label("notes.txt").click();
+    h.run_steps(2);
+    let mut input = egui::RawInput::default();
+    input.events.push(Event::Key {
+        key: Key::Delete,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: Modifiers::SHIFT,
+    });
+    crate::system_clipboard::prepare_input(&h.ctx, &mut input);
+    for event in input.events {
+        h.event(event);
+    }
+    h.run_steps(2);
+    assert!(matches!(
+        &h.state().ui.dialog,
+        Some(Dialog::ConfirmDelete { .. })
+    ));
+    assert!(
+        h.state().ui.clipboard.is_none(),
+        "Shift+Delete must not cut files"
+    );
+    assert!(
+        dir.path().join("notes.txt").exists(),
+        "confirmation has not been accepted"
+    );
 }
