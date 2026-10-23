@@ -2062,10 +2062,11 @@ mod tests {
             let store = store.clone();
             Command::UseKeyring(Box::new(move || Ok(store as Arc<dyn IndexKeyStore>)))
         };
-        let message = |r: &mut Running, what: &str| -> IndexStatus {
+        // Periodic statuses can repeat the previous command's message.
+        let message = |r: &mut Running, what: &str, expected: &str| -> IndexStatus {
             let Event::Status(s) = r.wait_for(
                 what,
-                |e| matches!(e, Event::Status(s) if s.key_message.is_some()),
+                |e| matches!(e, Event::Status(s) if s.key_message.as_deref().is_some_and(|m| m.contains(expected))),
             ) else {
                 unreachable!()
             };
@@ -2074,12 +2075,12 @@ mod tests {
 
         // Still no keyring, then a locked one: the passphrase stays.
         r.service.send(use_keyring(&store));
-        let s = message(&mut r, "no keyring");
+        let s = message(&mut r, "no keyring", "No system keyring");
         assert!(s.key_message.unwrap().contains("No system keyring"));
         assert_eq!(s.key_source, Some("Passphrase"));
         *store.fail_with.lock().unwrap() = Some(KeyStoreError::Locked);
         r.service.send(use_keyring(&store));
-        let s = message(&mut r, "locked keyring");
+        let s = message(&mut r, "locked keyring", "locked");
         assert!(s.key_message.unwrap().contains("locked"));
         assert!(vault::exists(&r.index_dir()), "the passphrase still works");
 
@@ -2087,7 +2088,7 @@ mod tests {
         *store.fail_with.lock().unwrap() = None;
         r.service.send(use_keyring(&store));
         let s = loop {
-            let s = message(&mut r, "moved");
+            let s = message(&mut r, "moved", "unlocks when you log in");
             if s.key_source == Some("System keyring") {
                 break s;
             }
