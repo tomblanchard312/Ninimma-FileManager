@@ -36,6 +36,8 @@ mod recent;
 mod security;
 mod selection;
 mod system_clipboard;
+#[cfg(all(unix, not(target_os = "macos")))]
+mod terminal;
 mod theme;
 mod thumbnail;
 mod trash_bin;
