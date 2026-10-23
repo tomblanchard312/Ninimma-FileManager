@@ -175,7 +175,7 @@ apple-native-keyring-store = { version = "1", features = ["keychain"] }   # logi
 
 [dev-dependencies]
 tempfile = "3"
-egui_kittest = "0.36"
+egui_kittest = "0.37"
 ron = "0.12"                # eframe saves settings as RON; tests read old ones
 
 [profile.release]
