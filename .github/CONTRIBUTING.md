@@ -30,3 +30,8 @@ Do not request write/admin access just to submit an idea or patch.
 Be respectful and constructive. Harassment, threats, spam, and disclosure of
 private information are not welcome. The owner may moderate content, close
 requests, or block abusive accounts. Participation does not guarantee acceptance.
+
+Linux checks for trusted repository branches and release FreeBSD VM builds run
+in an isolated local VM. Fork pull requests use standard hosted runners; do not
+route untrusted fork code to the local runner. Native Windows/macOS tests use
+standard hosted runners, which are free for this public repository.

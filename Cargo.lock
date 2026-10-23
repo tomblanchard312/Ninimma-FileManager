@@ -32,21 +32,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52c182f9c282ac9c5638d876d551d15e5f7d397ec263349a0c6a2b61595dd5e4"
 dependencies = [
  "accesskit 0.25.1",
- "accesskit_consumer 0.39.1",
+ "accesskit_consumer",
  "atspi-common",
  "phf",
  "serde",
  "zvariant",
-]
-
-[[package]]
-name = "accesskit_consumer"
-version = "0.35.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53cf47daed85312e763fbf85ceca136e0d7abc68e0a7e12abe11f48172bc3b10"
-dependencies = [
- "accesskit 0.24.1",
- "hashbrown 0.16.1",
 ]
 
 [[package]]
@@ -66,7 +56,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28e539d64b27fd4c14de8f78ada8f7c944c092f52f7e49fb63316507a57f6937"
 dependencies = [
  "accesskit 0.25.1",
- "accesskit_consumer 0.39.1",
+ "accesskit_consumer",
  "hashbrown 0.17.1",
  "objc2 0.5.3",
  "objc2-foundation 0.2.2",
@@ -80,7 +70,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5701624bf6a11efb6d4c8e922bf44126ed96250e5faa9a7a0468c979635839a4"
 dependencies = [
  "accesskit 0.25.1",
- "accesskit_consumer 0.39.1",
+ "accesskit_consumer",
  "hashbrown 0.17.1",
  "objc2 0.5.3",
  "objc2-app-kit 0.2.2",
@@ -112,7 +102,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce63f35d6bdcf59f26b76b3379063f738e6412cef46999cc772d46aa3de35adb"
 dependencies = [
  "accesskit 0.25.1",
- "accesskit_consumer 0.39.1",
+ "accesskit_consumer",
  "hashbrown 0.17.1",
  "static_assertions",
  "windows 0.62.2",
@@ -846,7 +836,7 @@ dependencies = [
  "log",
  "quick-xml 0.42.0",
  "serde",
- "zip 8.6.0",
+ "zip",
 ]
 
 [[package]]
@@ -920,7 +910,7 @@ dependencies = [
  "tokenizers 0.22.2",
  "yoke",
  "zerocopy",
- "zip 8.6.0",
+ "zip",
 ]
 
 [[package]]
@@ -1801,13 +1791,13 @@ dependencies = [
 
 [[package]]
 name = "egui_kittest"
-version = "0.36.2"
+version = "0.37.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5eb3f3effb2726fee23449293e67acbf6cc6ce35525b1722bd5743bb348114d5"
+checksum = "0979c2e37860fcf13a2bea77508607f067a9a6a84ba9bd47b5e298582fb59b86"
 dependencies = [
- "eframe 0.36.2",
- "egui 0.36.2",
- "egui-wgpu 0.36.2",
+ "eframe 0.37.0",
+ "egui 0.37.0",
+ "egui-wgpu 0.37.0",
  "image",
  "kittest",
  "log",
@@ -1922,7 +1912,6 @@ dependencies = [
  "bytemuck",
  "ecolor 0.36.2",
  "emath 0.36.2",
- "epaint_default_fonts 0.36.2",
  "font-types",
  "harfrust",
  "log",
@@ -1947,7 +1936,7 @@ dependencies = [
  "bytemuck",
  "ecolor 0.37.0",
  "emath 0.37.0",
- "epaint_default_fonts 0.37.0",
+ "epaint_default_fonts",
  "font-types",
  "harfrust",
  "log",
@@ -1963,12 +1952,6 @@ dependencies = [
  "unicode-segmentation",
  "vello_cpu 0.2.0",
 ]
-
-[[package]]
-name = "epaint_default_fonts"
-version = "0.36.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "773fa9c96dd0dbef887e39d0ed6177f141cce4d68e6041df77570aa3702dfa13"
 
 [[package]]
 name = "epaint_default_fonts"
@@ -3361,12 +3344,12 @@ dependencies = [
 
 [[package]]
 name = "kittest"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90ceaa75eb0036a32b6b9833962eb18137449e9817e2e586006471925b727fd5"
+checksum = "0bb81a721ba76aa095b7f45deb180504f786904e56ca4b8e141f66eb89a78b75"
 dependencies = [
- "accesskit 0.24.1",
- "accesskit_consumer 0.35.0",
+ "accesskit 0.25.1",
+ "accesskit_consumer",
 ]
 
 [[package]]
@@ -3766,8 +3749,9 @@ dependencies = [
  "chacha20poly1305",
  "chrono",
  "drag",
+ "eframe 0.36.2",
  "eframe 0.37.0",
- "egui 0.36.2",
+ "egui 0.37.0",
  "egui_kittest",
  "getrandom 0.4.3",
  "image",
@@ -3796,19 +3780,7 @@ dependencies = [
  "zbus",
  "zbus-secret-service-keyring-store",
  "zeroize",
- "zip 9.0.5",
-]
-
-[[package]]
-name = "nix"
-version = "0.31.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf20d2fde8ff38632c426f1165ed7436270b44f199fc55284c38276f9db47c3d"
-dependencies = [
- "bitflags 2.13.2",
- "cfg-if",
- "cfg_aliases",
- "libc",
+ "zip",
 ]
 
 [[package]]
@@ -7690,20 +7662,6 @@ dependencies = [
  "nix",
  "typed-path",
  "zopfli",
-]
-
-[[package]]
-name = "zip"
-version = "9.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e04976da629d3b04204ba8105b396a193af8ad2583b2c79bfb3ab8af580a11e"
-dependencies = [
- "crc32fast",
- "flate2",
- "indexmap",
- "memchr",
- "nix",
- "typed-path",
 ]
 
 [[package]]

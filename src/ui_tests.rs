@@ -47,6 +47,7 @@ fn harness_sized(dir: &Path, size: Vec2) -> Harness<'static, App> {
     ui.templates = Vec::new();
     ui.menus_refreshed = Some(std::time::Instant::now() + Duration::from_secs(3600));
     let mut h = Harness::builder()
+        .with_context_setup(crate::configure_style)
         .with_size(size)
         // Real frame timing, so double-click detection (300 ms) behaves as in the app.
         .with_step_dt(1.0 / 60.0)
@@ -66,6 +67,7 @@ fn ctrl_wheel(h: &mut Harness<'static, App>, lines: f32) {
     h.hover_at(Pos2::new(700.0, 450.0));
     h.event_modifiers(
         Event::MouseWheel {
+            source: egui::MouseWheelSource::Wheel,
             unit: MouseWheelUnit::Line,
             delta: Vec2::new(0.0, lines),
             phase: TouchPhase::Move,
@@ -139,6 +141,7 @@ fn plain_wheel_scrolls_instead_of_zooming() {
     let size = h.state().ui.view.icon_size;
     h.hover_at(Pos2::new(700.0, 450.0));
     h.event(Event::MouseWheel {
+        source: egui::MouseWheelSource::Wheel,
         unit: MouseWheelUnit::Line,
         delta: Vec2::new(0.0, -3.0),
         phase: TouchPhase::Move,
@@ -1438,7 +1441,7 @@ fn clicking_a_folder_in_the_address_bar_goes_there() {
     // to typing a path.
     let bar = h
         .ctx
-        .data(|d| d.get_temp::<Rect>(Id::new("address_bar_bg")))
+        .data(|d| d.get_temp::<Rect>(Id::unique("address_bar_bg")))
         .expect("the address bar is shown");
     let empty = Pos2::new(bar.right() - 20.0, bar.center().y);
     mouse_click(&mut h, empty);
@@ -1610,7 +1613,7 @@ fn this_pc_tiles_line_up_in_rows_and_wrap_inside_the_window() {
     let mut h = harness_sized(dir.path(), Vec2::new(width, 700.0));
     *h.state().ui.drives.lock().unwrap() = (1..=5)
         .map(|i| DriveInfo {
-            path: dir.path().to_path_buf(),
+            path: dir.path().join(format!("drive-{i}")),
             label: format!("Drive {i}"),
             drive_type: if i == 5 {
                 DriveType::Removable

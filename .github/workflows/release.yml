@@ -24,7 +24,7 @@ jobs:
           test "$GITHUB_REF_NAME" = "v$version"
   linux:
     needs: validate
-    runs-on: ubuntu-22.04
+    runs-on: ninimma-linux
     steps:
       - uses: actions/checkout@v7
       - run: bash packaging/ci/build-linux-release.sh "${GITHUB_REF_NAME}"
@@ -111,22 +111,30 @@ jobs:
           if-no-files-found: error
   freebsd:
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ninimma-freebsd
     strategy:
+      max-parallel: 1
       fail-fast: false
       matrix:
         release: ["14", "15"]
     steps:
       - uses: actions/checkout@v7
+      - name: Check isolated runner readiness
+        env:
+          RUNNER_MIN_FREE_GB: "40"
+        run: bash packaging/ci/check-runner.sh vm
       - uses: vmactions/freebsd-vm@v1
+        id: freebsd_vm
         with:
           release: ${{ matrix.release }}
           cpu: 2
+          data-dir: ${{ runner.temp }}/ninimma-freebsd-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.release }}
+          disable-cache: true
           usesh: true
           copyback: false
           envs: GITHUB_REF_NAME
           prepare: |
-            pkg install -y curl cmake llvm libX11 libxkbcommon libXcursor libXi libXrender mesa-libs
+            pkg install -y curl cmake llvm libX11 libxkbcommon libXcursor libXi libXrender mesa-libs xorg-vfbserver mesa-dri
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
           run: |
             . "$HOME/.cargo/env"
@@ -137,8 +145,7 @@ jobs:
             for f in target/freebsd/ninimma-*.pkg; do
               mv "$f" "${f%.pkg}-freebsd${{ matrix.release }}-amd64.pkg"
             done
-            pkg add target/freebsd/*.pkg
-            /usr/local/bin/ninimma --version
+            sh packaging/freebsd/install-smoke-test.sh
       - run: |
           mkdir -p target/freebsd
           scp "freebsd:${GITHUB_WORKSPACE}/target/freebsd/*.pkg" target/freebsd/
@@ -147,6 +154,18 @@ jobs:
           name: freebsd-${{ matrix.release }}
           path: target/freebsd/*.pkg
           if-no-files-found: error
+      - name: Clean disposable FreeBSD build files
+        if: always()
+        env:
+          VM_DATA_DIR: ${{ runner.temp }}/ninimma-freebsd-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.release }}
+        run: |
+          if [[ "${{ steps.freebsd_vm.outcome }}" != "skipped" ]]; then
+            timeout 15s ssh -o BatchMode=yes -o ConnectTimeout=5 freebsd /sbin/shutdown -p now || true
+          fi
+          rm -rf -- target
+          if [[ -d "$VM_DATA_DIR" ]]; then
+            sudo -n rm -rf -- "$VM_DATA_DIR"
+          fi
   publish:
     needs: [quality, audit, linux, windows, macos, freebsd]
     runs-on: ubuntu-latest
