@@ -44,6 +44,8 @@ jobs:
     env:
       RUSTFLAGS: -C target-feature=+crt-static
       LLAMA_STATIC_CRT: "1"
+      # Modern CMake selects the CRT through this property, overriding compiler flags.
+      CMAKE_MSVC_RUNTIME_LIBRARY: MultiThreaded
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
