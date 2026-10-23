@@ -114,6 +114,7 @@ echo "Shipped with: ${runtime[*]:-nothing}"
 WINEDEBUG=-all /usr/lib/wine/wine64 "$exe" --version
 
 cp LICENSE NOTICE "$release/"
+cp packaging/icons/LICENSE-lucide "$release/"
 rm -f "$archive"
-(cd "$release" && zip -q "../../../$archive" ninimma.exe "${runtime[@]}" LICENSE NOTICE)
+(cd "$release" && zip -q "../../../$archive" ninimma.exe "${runtime[@]}" LICENSE NOTICE LICENSE-lucide)
 zip -sf "$archive"
