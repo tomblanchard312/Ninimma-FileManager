@@ -1,50 +1,33 @@
 --- a/build.rs
 +++ b/build.rs
-@@ -23,6 +23,8 @@
-     Apple(AppleVariant),
+@@ -24,6 +24,8 @@
      Linux,
      Android,
-+    // FreeBSD builds like Linux, except that its C++ library is libc++.
+     Emscripten,
++    // FreeBSD uses libc++ rather than GNU libstdc++.
 +    FreeBsd,
  }
  
  macro_rules! debug_log {
-@@ -80,6 +82,8 @@
+@@ -81,6 +83,8 @@
          Ok((TargetOs::Android, target))
      } else if target.contains("linux") {
          Ok((TargetOs::Linux, target))
 +    } else if target.contains("freebsd") {
 +        Ok((TargetOs::FreeBsd, target))
+     } else if target.contains("emscripten") {
+         Ok((TargetOs::Emscripten, target))
      } else {
-         Err(target)
-     }
-@@ -121,7 +125,7 @@
+@@ -124,7 +128,7 @@
                  ".a"
              }
          }
--        TargetOs::Linux | TargetOs::Android => {
-+        TargetOs::Linux | TargetOs::Android | TargetOs::FreeBsd => {
+-        TargetOs::Linux | TargetOs::Android | TargetOs::Emscripten => {
++        TargetOs::Linux | TargetOs::Android | TargetOs::Emscripten | TargetOs::FreeBsd => {
              if shared {
                  ".so"
              } else {
-@@ -132,6 +136,16 @@
- }
- 
- fn extract_lib_names(dir_pattern: &Path, target_os: &TargetOs, shared: bool) -> Vec<PathBuf> {
-+    // MinGW builds of ggml are named "ggml.a"; the search below and the
-+    // linker want "libggml.a", so add those names.
-+    if matches!(target_os, TargetOs::Windows(WindowsVariant::Other)) && !shared {
-+        for entry in glob(dir_pattern.join("*.a").to_str().unwrap()).unwrap().flatten() {
-+            let name = entry.file_name().unwrap().to_str().unwrap().to_string();
-+            if !name.starts_with("lib") {
-+                let _ = std::fs::copy(&entry, entry.with_file_name(format!("lib{name}")));
-+            }
-+        }
-+    }
-     let pattern = dir_pattern.join(format!(
-         "{}*{}",
-         lib_prefix(target_os, shared),
-@@ -901,7 +915,7 @@
+@@ -1057,7 +1061,7 @@
                      config.cxxflag("/FS");
                  }
              }
@@ -53,7 +36,7 @@
                  // If we are not using system provided vulkan SDK, add vulkan libs for linking
                  if let Ok(vulkan_path) = env::var("VULKAN_SDK") {
                      let vulkan_lib_path = Path::new(&vulkan_path).join("lib");
-@@ -1348,6 +1362,7 @@
+@@ -1513,6 +1517,7 @@
                  println!("cargo:rustc-link-lib=dylib=stdc++");
              }
          }
