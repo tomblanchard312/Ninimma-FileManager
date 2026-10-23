@@ -2,6 +2,7 @@
 name: Security Audit
 
 on:
+  workflow_call:
   push:
     paths:
       - '**/Cargo.toml'
@@ -19,7 +20,7 @@ permissions:
 jobs:
   audit:
     name: Security Audit
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'ninimma-linux' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
 

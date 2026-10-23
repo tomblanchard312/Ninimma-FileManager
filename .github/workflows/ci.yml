@@ -1,6 +1,7 @@
 # Ninimma modification: independent GitHub-hosted validation.
 name: CI
 on:
+  workflow_call:
   push:
     branches: [main]
   pull_request:
@@ -11,19 +12,17 @@ concurrency:
   cancel-in-progress: true
 jobs:
   check:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'ninimma-linux' || 'ubuntu-22.04' }}
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
       - run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config cmake clang libclang-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libwayland-dev
+      - name: Locate compiler builtin headers
+        run: echo "BINDGEN_EXTRA_CLANG_ARGS=-I$(gcc -print-file-name=include)" >> "$GITHUB_ENV"
       - run: cargo fmt --all -- --check
       - run: python3 -m unittest discover -s packaging/linux
       - run: cargo clippy --locked --all-targets -- -D warnings
-        env:
-          BINDGEN_EXTRA_CLANG_ARGS: -I/usr/lib/gcc/x86_64-linux-gnu/11/include
       - run: cargo test --locked
-        env:
-          BINDGEN_EXTRA_CLANG_ARGS: -I/usr/lib/gcc/x86_64-linux-gnu/11/include
       - run: cargo test --locked --no-default-features

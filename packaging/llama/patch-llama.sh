@@ -1,13 +1,10 @@
 #!/bin/sh
 # Ninimma modification: independent project packaging and branding.
-# Lets smart search (llama.cpp) build on FreeBSD and with MinGW (Windows,
-# cross-built on Linux).
+# Lets smart search (llama.cpp) build on FreeBSD.
 #
-# llama-cpp-sys-2's build script stops on FreeBSD (it only knows Windows,
-# Apple, Android and Linux), and with MinGW misses ggml's libraries (named
-# "ggml.a", not "libggml.a"). This copies the crate from Cargo's cache into
-# target/, applies llama-cpp-sys-2.patch (FreeBSD builds like Linux, linking
-# libc++; MinGW gets lib-prefixed copies of ggml's libraries), points this
+# llama-cpp-sys-2's build script does not recognize FreeBSD. This copies the
+# crate from Cargo's cache into target/, applies the FreeBSD/libc++ patch,
+# points this
 # checkout's Cargo.lock at the copy, and prints the --config value that makes
 # Cargo use it:
 #

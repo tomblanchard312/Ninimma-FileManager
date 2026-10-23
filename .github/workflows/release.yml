@@ -9,7 +9,12 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  quality:
+    uses: ./.github/workflows/ci.yml
+  audit:
+    uses: ./.github/workflows/security.yml
   validate:
+    needs: [quality, audit]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -19,7 +24,7 @@ jobs:
           test "$GITHUB_REF_NAME" = "v$version"
   linux:
     needs: validate
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && 'ninimma-linux' || 'ubuntu-22.04' }}
     steps:
       - uses: actions/checkout@v7
       - run: bash packaging/ci/build-linux-release.sh "${GITHUB_REF_NAME}"
@@ -32,6 +37,7 @@ jobs:
             *.deb
             *.rpm
           if-no-files-found: error
+          retention-days: 1
   windows:
     needs: validate
     runs-on: windows-latest
@@ -62,6 +68,14 @@ jobs:
           & "$installed\ninimma.exe" --version
           if ($LASTEXITCODE -ne 0) { throw 'Installed app failed' }
           if (!(Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Ninimma\Ninimma.lnk")) { throw 'Shortcut missing' }
+          $app = Start-Process -FilePath "$installed\ninimma.exe" -ArgumentList $env:TEMP -PassThru -RedirectStandardOutput "$env:TEMP\ninimma-out.log" -RedirectStandardError "$env:TEMP\ninimma-error.log"
+          Start-Sleep -Seconds 8
+          if ($app.HasExited) {
+            Get-Content "$env:TEMP\ninimma-error.log"
+            throw 'Installed GUI exited early'
+          }
+          Stop-Process -Id $app.Id
+          $app.WaitForExit()
           $p = Start-Process -FilePath "$installed\Uninstall.exe" -ArgumentList '/S', "_?=$installed" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw 'Uninstall failed' }
           if (Test-Path "$installed\ninimma.exe") { throw 'App left after uninstall' }
@@ -70,16 +84,19 @@ jobs:
           name: windows
           path: ninimma-windows-x64-setup.exe
           if-no-files-found: error
+          retention-days: 1
   macos:
     needs: validate
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - target: aarch64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
             arch: arm64
-          - target: x86_64-apple-darwin
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
             arch: x64
     steps:
       - uses: actions/checkout@v7
@@ -88,29 +105,39 @@ jobs:
           targets: ${{ matrix.target }}
       - run: cargo build --locked --release --target ${{ matrix.target }}
       - run: bash packaging/macos/build-dmg.sh '${{ matrix.target }}' '${{ matrix.arch }}'
+      - run: bash packaging/macos/install-smoke-test.sh 'ninimma-macos-${{ matrix.arch }}.dmg'
       - uses: actions/upload-artifact@v7
         with:
           name: macos-${{ matrix.arch }}
           path: '*.dmg'
           if-no-files-found: error
+          retention-days: 1
   freebsd:
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && 'ninimma-freebsd' || 'ubuntu-latest' }}
     strategy:
+      max-parallel: 1
       fail-fast: false
       matrix:
         release: ["14", "15"]
     steps:
       - uses: actions/checkout@v7
+      - name: Check isolated runner readiness
+        env:
+          RUNNER_MIN_FREE_GB: "40"
+        run: bash packaging/ci/check-runner.sh vm
       - uses: vmactions/freebsd-vm@v1
+        id: freebsd_vm
         with:
           release: ${{ matrix.release }}
           cpu: 2
+          data-dir: ${{ runner.temp }}/ninimma-freebsd-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.release }}
+          disable-cache: true
           usesh: true
           copyback: false
           envs: GITHUB_REF_NAME
           prepare: |
-            pkg install -y curl cmake llvm libX11 libxkbcommon libXcursor libXi libXrender mesa-libs
+            pkg install -y curl cmake llvm libX11 libxkbcommon libXcursor libXi libXrender mesa-libs xorg-vfbserver mesa-dri
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
           run: |
             . "$HOME/.cargo/env"
@@ -121,8 +148,7 @@ jobs:
             for f in target/freebsd/ninimma-*.pkg; do
               mv "$f" "${f%.pkg}-freebsd${{ matrix.release }}-amd64.pkg"
             done
-            pkg add target/freebsd/*.pkg
-            /usr/local/bin/ninimma --version
+            sh packaging/freebsd/install-smoke-test.sh
       - run: |
           mkdir -p target/freebsd
           scp "freebsd:${GITHUB_WORKSPACE}/target/freebsd/*.pkg" target/freebsd/
@@ -131,8 +157,21 @@ jobs:
           name: freebsd-${{ matrix.release }}
           path: target/freebsd/*.pkg
           if-no-files-found: error
+          retention-days: 1
+      - name: Clean disposable FreeBSD build files
+        if: always()
+        env:
+          VM_DATA_DIR: ${{ runner.temp }}/ninimma-freebsd-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.release }}
+        run: |
+          if [[ "${{ steps.freebsd_vm.outcome }}" != "skipped" ]]; then
+            timeout 15s ssh -o BatchMode=yes -o ConnectTimeout=5 freebsd /sbin/shutdown -p now || true
+          fi
+          rm -rf -- target
+          if [[ -d "$VM_DATA_DIR" ]]; then
+            sudo -n rm -rf -- "$VM_DATA_DIR"
+          fi
   publish:
-    needs: [linux, windows, macos, freebsd]
+    needs: [quality, audit, linux, windows, macos, freebsd]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -151,6 +190,13 @@ jobs:
         uses: actions/attest@v4
         with:
           subject-path: 'artifacts/*'
+      - name: Verify every attestation before publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for asset in artifacts/*; do
+            gh attestation verify "$asset" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" --source-ref "$GITHUB_REF"
+          done
       - name: Publish installers
         env:
           GH_TOKEN: ${{ github.token }}

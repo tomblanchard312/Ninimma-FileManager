@@ -303,3 +303,10 @@ gh attestation verify DOWNLOAD -R tomblanchard312/Ninimma-FileManager
 ```
 
 These attestations do not replace operating-system code signing.
+
+To build the experimental Flatpak with matching release provenance, select the
+release tag as both the workflow ref and its tag input, or run:
+
+```sh
+gh workflow run flatpak.yml --ref v0.1.1 -f tag=v0.1.1
+```

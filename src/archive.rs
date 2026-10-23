@@ -135,7 +135,9 @@ pub fn extract(archive: &Path, dest: &Path) -> Result<(), String> {
             else {
                 return Err(format!(
                     "\"{}\" would land outside the folder",
-                    entry.name()
+                    entry
+                        .name()
+                        .unwrap_or_else(|_| "invalid ZIP filename".into())
                 ));
             };
             let target = dest.join(relative);
@@ -228,5 +230,83 @@ mod tests {
         assert!(extract(&zip_path, &out).is_err());
         assert!(!dir.path().join("escaped.txt").exists());
         assert!(!out.exists(), "the half-made folder is removed");
+    }
+
+    #[test]
+    fn extracted_links_cannot_redirect_writes_outside_the_destination() {
+        let dir = tempfile::tempdir().unwrap();
+        let outside = dir.path().join("outside");
+        fs::create_dir(&outside).unwrap();
+        fs::write(outside.join("sentinel"), b"keep").unwrap();
+        let path = dir.path().join("links.zip");
+        let mut zip = zip::ZipWriter::new(fs::File::create(&path).unwrap());
+        zip.add_symlink(
+            "link",
+            outside.to_string_lossy(),
+            SimpleFileOptions::default(),
+        )
+        .unwrap();
+        zip.start_file("link/new.txt", SimpleFileOptions::default())
+            .unwrap();
+        zip.write_all(b"inside only").unwrap();
+        zip.finish().unwrap();
+        let out = dir.path().join("extracted");
+        extract(&path, &out).unwrap();
+        assert!(!out.join("link").is_symlink());
+        assert_eq!(fs::read(out.join("link/new.txt")).unwrap(), b"inside only");
+        assert!(!outside.join("new.txt").exists());
+        assert_eq!(fs::read(outside.join("sentinel")).unwrap(), b"keep");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn extracted_files_never_receive_setuid_or_setgid_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("modes.zip");
+        let mut zip = zip::ZipWriter::new(fs::File::create(&path).unwrap());
+        zip.start_file("tool", SimpleFileOptions::default().unix_permissions(0o755))
+            .unwrap();
+        zip.write_all(b"payload").unwrap();
+        zip.finish().unwrap();
+        // Inject bits that well-behaved ZIP writers deliberately strip.
+        let mut bytes = fs::read(&path).unwrap();
+        let central = bytes.windows(4).position(|w| w == b"PK\x01\x02").unwrap();
+        bytes[central + 38..central + 42].copy_from_slice(&(0o106755_u32 << 16).to_le_bytes());
+        fs::write(&path, bytes).unwrap();
+        let out = dir.path().join("extracted");
+        extract(&path, &out).unwrap();
+        assert_eq!(
+            fs::metadata(out.join("tool")).unwrap().permissions().mode() & 0o7777,
+            0o755
+        );
+    }
+
+    #[cfg(feature = "smart-search")]
+    #[test]
+    fn patched_candle_reads_zip9_tensor_archives() {
+        use candle_core::{npy::NpzTensors, Device, Tensor};
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("tensor.npz");
+        let tensor = Tensor::from_slice(&[1.0_f32, 2.0], 2, &Device::Cpu).unwrap();
+        Tensor::write_npz(&[("sample", &tensor)], &path).unwrap();
+        let loaded = Tensor::read_npz(&path).unwrap();
+        assert_eq!(loaded[0].0, "sample");
+        assert_eq!(loaded[0].1.to_vec1::<f32>().unwrap(), vec![1.0, 2.0]);
+        let lazy = NpzTensors::new(&path).unwrap();
+        assert_eq!(
+            lazy.get("sample")
+                .unwrap()
+                .unwrap()
+                .to_vec1::<f32>()
+                .unwrap(),
+            vec![1.0, 2.0]
+        );
+        // The pickle reader scans filenames too; this archive contains no pickle tensors.
+        assert!(
+            candle_core::pickle::read_pth_tensor_info(&path, false, None)
+                .unwrap()
+                .is_empty()
+        );
     }
 }

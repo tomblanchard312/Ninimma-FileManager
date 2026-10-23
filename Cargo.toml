@@ -1,7 +1,7 @@
 # Ninimma modification: independent project packaging and branding.
 [package]
 name = "ninimma"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Fast file manager with large thumbnails, bulk image rotation, tabs and Windows Explorer shortcuts"
 license = "Apache-2.0"
@@ -104,8 +104,8 @@ gpu-metal = ["smart-search", "llama-cpp-2/metal"]
 # x11 + wayland are required for eframe to build on Linux at all when default
 # features are off. accesskit exposes the UI to screen readers; persistence
 # remembers window size and view settings between runs.
-eframe = { version = "0.36", default-features = false, features = ["default_fonts", "glow", "x11", "wayland", "accesskit", "persistence"] }
-egui = { version = "0.36", features = ["default_fonts"] }
+eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "x11", "wayland", "accesskit", "persistence"] }
+egui = { version = "0.37", features = ["default_fonts"] }
 serde = { version = "1", features = ["derive"] }
 image = "0.25"
 notify = "8.2"              # Auto-refresh when the current folder changes on disk
@@ -114,8 +114,8 @@ trash = { version = "5", features = ["chrono"] }  # Move to Recycle Bin / Trash 
 chrono = "0.4"
 regex = "1"                 # Bulk rename: find and replace with regular expressions
 open = "5"
-calamine = "0.36"          # Excel file reading
-zip = { version = "8.2", default-features = false, features = ["deflate-flate2-zlib-rs"] }  # docx/pptx are zip files; pure-Rust deflate only
+calamine = "0.37"          # Excel file reading
+zip = { version = "9.0.5", default-features = false, features = ["deflate-flate2-zlib-rs"] }  # docx/pptx are zip files; pure-Rust deflate only
 quick-xml = "0.42"          # For parsing Office XML
 
 raw-window-handle = "0.6"   # Window handle for starting OS drag-and-drop
@@ -164,7 +164,7 @@ drag = "2.1"
 [target.'cfg(windows)'.dependencies]
 # Direct3D 12 rendering: Windows VMs often lack OpenGL 2 (glow stays as
 # the fallback).
-eframe = { version = "0.36", default-features = false, features = ["wgpu"] }
+eframe = { version = "0.37", default-features = false, features = ["wgpu"] }
 windows-native-keyring-store = "1"   # Windows Credential Manager (DPAPI)
 rusqlite = { version = "0.40", features = ["bundled-sqlcipher-vendored-openssl"] }
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Memory", "Win32_Storage_FileSystem", "Win32_System_Power", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging"] }
@@ -175,7 +175,7 @@ apple-native-keyring-store = { version = "1", features = ["keychain"] }   # logi
 
 [dev-dependencies]
 tempfile = "3"
-egui_kittest = "0.36"
+egui_kittest = "0.37"
 ron = "0.12"                # eframe saves settings as RON; tests read old ones
 
 [profile.release]
@@ -185,3 +185,7 @@ codegen-units = 1
 strip = true
 # panic = "abort" is intentionally not set: thumbnail decoding relies on
 # catch_unwind so a malformed image can't take down the whole app.
+
+# shortcut: upstream Candle 0.11 pins vulnerable ZIP 8; remove when a release supports ZIP 9.
+[patch.crates-io]
+candle-core = { path = "vendor/candle-core" }

@@ -1731,12 +1731,7 @@ impl NinimmaUI {
                     text_color,
                 );
                 resp.widget_info(|| {
-                    egui::WidgetInfo::selected(
-                        egui::WidgetType::SelectableLabel,
-                        true,
-                        active,
-                        &title,
-                    )
+                    egui::WidgetInfo::selected(egui::Role::ListBoxOption, true, active, &title)
                 });
 
                 // Close button, drawn on top of the tab.
@@ -1746,8 +1741,11 @@ impl NinimmaUI {
                         rect.right_center() - Vec2::new(16.0, 0.0),
                         Vec2::splat(20.0),
                     );
-                    let close =
-                        ui.interact(close_rect, ui.id().with(("close_tab", i)), Sense::click());
+                    let close = ui.interact(
+                        close_rect,
+                        ui.scope_id().with(("close_tab", i)),
+                        Sense::click(),
+                    );
                     if close.hovered() {
                         ui.painter()
                             .rect_filled(close_rect, CornerRadius::same(4), pal().hover);
@@ -1767,7 +1765,7 @@ impl NinimmaUI {
                     }
                     close.widget_info(|| {
                         egui::WidgetInfo::labeled(
-                            egui::WidgetType::Button,
+                            egui::Role::Button,
                             true,
                             format!("Close {title}"),
                         )
@@ -3709,7 +3707,7 @@ impl NinimmaUI {
         // was last frame) so they sit on top of it: egui gives a click to the
         // widget added last, and added after, it took every click on a
         // folder name.
-        let bar_id = Id::new("address_bar_bg");
+        let bar_id = Id::unique("address_bar_bg");
         let last_rect = ui.ctx().data(|d| d.get_temp::<Rect>(bar_id));
         if let Some(rect) = last_rect {
             let bar = ui.interact(rect, bar_id, Sense::click());
@@ -3738,7 +3736,7 @@ impl NinimmaUI {
                 if self.editing_address {
                     let edit = ui.add(
                         egui::TextEdit::singleline(&mut self.address_text)
-                            .id(Id::new("address_bar"))
+                            .id(Id::unique("address_bar"))
                             .desired_width(f32::INFINITY)
                             .frame(egui::Frame::NONE)
                             .font(FontId::proportional(FONT_SIZE_NORMAL))
@@ -3895,7 +3893,7 @@ impl NinimmaUI {
                         egui::TextEdit::singleline(&mut self.search_text)
                             // A fixed id: the ☆ appearing before it mustn't
                             // take the focus away mid-word.
-                            .id(egui::Id::new("search_box"))
+                            .id(egui::Id::unique("search_box"))
                             .hint_text(RichText::new(hint).color(pal().text_secondary))
                             .desired_width(f32::INFINITY)
                             .frame(egui::Frame::NONE)
@@ -4627,7 +4625,11 @@ impl NinimmaUI {
         // Background: click empty space to deselect, drag to rubber-band select,
         // right-click for the folder menu. Items drawn later sit on top of it.
         let area = ui.available_rect_before_wrap();
-        let bg = ui.interact(area, ui.id().with("file_area_bg"), Sense::click_and_drag());
+        let bg = ui.interact(
+            area,
+            ui.scope_id().with("file_area_bg"),
+            Sense::click_and_drag(),
+        );
 
         let mut scroll = ScrollArea::vertical()
             .id_salt(("files", self.shown_path.clone()))
@@ -4670,7 +4672,7 @@ impl NinimmaUI {
                 });
             }
         });
-        self.scroll_offset = out.state.offset.y;
+        self.scroll_offset = out.state.clamped_offset().y;
         self.viewport_height = out.inner_rect.height();
 
         if n == 0 {
@@ -4856,7 +4858,7 @@ impl NinimmaUI {
         let focused = self.selection.focus() == Some(path.as_path());
         response.widget_info(|| {
             egui::WidgetInfo::selected(
-                egui::WidgetType::SelectableLabel,
+                egui::Role::ListBoxOption,
                 true,
                 selected,
                 &self.list.items[index].name,
@@ -6133,7 +6135,7 @@ impl NinimmaUI {
         let mut pending_connect: Option<(String, Option<Credentials>)> = None;
         #[cfg(all(unix, not(target_os = "macos")))]
         let mut pending_open_with: Option<(open_with::App, Vec<PathBuf>, Option<String>)> = None;
-        let modal = egui::Modal::new(Id::new("dialog")).show(ctx, |ui| {
+        let modal = egui::Modal::new(Id::unique("dialog")).show(ctx, |ui| {
             ui.set_width(420.0);
             match &mut dialog {
                 Dialog::Disks { operation, target, read_only, recovery_password, error } => {
@@ -6849,7 +6851,7 @@ fn tree_arrow(ui: &mut Ui, row: Rect, x: f32, expanded: bool, name: &str) -> egu
     );
     let resp = ui.interact(
         rect,
-        ui.id().with(("tree_arrow", name, row.top() as i32)),
+        ui.scope_id().with(("tree_arrow", name, row.top() as i32)),
         Sense::click(),
     );
     ui.painter().text(
@@ -6869,7 +6871,7 @@ fn tree_arrow(ui: &mut Ui, row: Rect, x: f32, expanded: bool, name: &str) -> egu
     );
     let verb = if expanded { "Collapse" } else { "Expand" };
     resp.widget_info(|| {
-        egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("{verb} {name}"))
+        egui::WidgetInfo::labeled(egui::Role::Button, true, format!("{verb} {name}"))
     });
     resp
 }
@@ -6912,9 +6914,8 @@ fn tree_row(ui: &mut Ui, depth: usize, icon: &str, name: &str, current: bool) ->
         galley,
         fg,
     );
-    response.widget_info(|| {
-        egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, current, name)
-    });
+    response
+        .widget_info(|| egui::WidgetInfo::selected(egui::Role::ListBoxOption, true, current, name));
     response
 }
 
@@ -6951,9 +6952,8 @@ fn nav_item(ui: &mut Ui, icon: &str, name: &str, current: bool) -> egui::Respons
         galley,
         fg,
     );
-    response.widget_info(|| {
-        egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, current, name)
-    });
+    response
+        .widget_info(|| egui::WidgetInfo::selected(egui::Role::ListBoxOption, true, current, name));
     response
 }
 
@@ -7060,7 +7060,7 @@ fn place_tile(
     let resp = ui
         .interact(
             inner.response.rect,
-            ui.id().with(("tile", path)),
+            ui.scope_id().with(("tile", path)),
             Sense::click(),
         )
         .on_hover_cursor(egui::CursorIcon::PointingHand)
@@ -7149,12 +7149,7 @@ fn drive_item(ui: &mut Ui, drive: &DriveInfo, current: bool, lead: f32) -> egui:
         );
     }
     response.widget_info(|| {
-        egui::WidgetInfo::selected(
-            egui::WidgetType::SelectableLabel,
-            true,
-            current,
-            &drive.label,
-        )
+        egui::WidgetInfo::selected(egui::Role::ListBoxOption, true, current, &drive.label)
     });
     response.on_hover_text(tooltip)
 }

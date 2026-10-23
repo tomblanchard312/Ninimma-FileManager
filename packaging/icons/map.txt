@@ -89,3 +89,6 @@
 ⏶ chevron-up
 ▸ chevron-right
 ▾ chevron-down
+
+ℹ info
+🔥 flame

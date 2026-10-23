@@ -6,9 +6,9 @@ permissions:
   contents: read
 jobs:
   review:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'ninimma-linux' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high

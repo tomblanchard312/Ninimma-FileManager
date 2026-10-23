@@ -9,9 +9,12 @@ on:
     - cron: '23 7 * * 1'
 permissions:
   contents: read
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   analyze:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'ninimma-linux' || 'ubuntu-latest' }}
     permissions:
       contents: read
       security-events: write
@@ -21,10 +24,14 @@ jobs:
         language: [rust, python, actions]
     steps:
       - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        if: matrix.language == 'rust'
       - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: none
+          ram: 6144
+          threads: 2
       - uses: github/codeql-action/analyze@v4
         with:
           category: '/language:${{ matrix.language }}'
