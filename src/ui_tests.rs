@@ -1,3 +1,4 @@
+// Ninimma modification: independent UI harness, smart-search demo and egui compatibility.
 //! End-to-end UI tests: drive the real UI with simulated mouse and keyboard
 //! input via egui_kittest (no window or GPU needed, so they run in CI).
 

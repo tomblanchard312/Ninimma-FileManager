@@ -41,6 +41,9 @@ jobs:
   windows:
     needs: validate
     runs-on: windows-latest
+    env:
+      RUSTFLAGS: -C target-feature=+crt-static
+      LLAMA_STATIC_CRT: "1"
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -48,10 +51,24 @@ jobs:
         shell: pwsh
         run: |
           $env:LIBCLANG_PATH = 'C:\Program Files\LLVM\bin'
-          cargo build --locked --release
+          cargo build --locked --release --target x86_64-pc-windows-msvc
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & target/release/ninimma.exe --version
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force target/release | Out-Null
+          Copy-Item target/x86_64-pc-windows-msvc/release/ninimma.exe target/release/ninimma.exe
+          $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.*)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $p = Start-Process -FilePath (Resolve-Path target/release/ninimma.exe) -ArgumentList '--version' -Wait -PassThru -RedirectStandardOutput target/release/version.txt
+          if ($p.ExitCode -ne 0 -or (Get-Content target/release/version.txt -Raw).Trim() -ne "ninimma $version") { throw 'Built version check failed' }
+      - name: Verify GUI subsystem and self-contained runtime
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $dumpbin = & $vswhere -latest -products '*' -find 'VC\Tools\MSVC\**\bin\Hostx64\x64\dumpbin.exe' | Select-Object -First 1
+          if (!$dumpbin) { throw 'dumpbin not found' }
+          $deps = & $dumpbin /dependents target/release/ninimma.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency inspection failed' }
+          if ($deps -match '(VCRUNTIME|MSVCP|libcrypto|libssl|libgcc|libstdc\+\+|libwinpthread)') { throw "Unexpected external runtime: $deps" }
+          $headers = & $dumpbin /headers target/release/ninimma.exe
+          if ($LASTEXITCODE -ne 0 -or !($headers -match 'subsystem \(Windows GUI\)')) { throw 'Expected Windows GUI subsystem' }
       - name: Build installer
         shell: pwsh
         run: |
@@ -65,8 +82,8 @@ jobs:
           $installed = Join-Path $env:LOCALAPPDATA 'Programs\Ninimma'
           $p = Start-Process -FilePath .\ninimma-windows-x64-setup.exe -ArgumentList '/S' -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw 'Install failed' }
-          & "$installed\ninimma.exe" --version
-          if ($LASTEXITCODE -ne 0) { throw 'Installed app failed' }
+          $p = Start-Process -FilePath "$installed\ninimma.exe" -ArgumentList '--version' -Wait -PassThru -RedirectStandardOutput "$env:TEMP\ninimma-installed-version.txt"
+          if ($p.ExitCode -ne 0 -or (Get-Content "$env:TEMP\ninimma-installed-version.txt" -Raw).Trim() -ne (Get-Content target/release/version.txt -Raw).Trim()) { throw 'Installed version check failed' }
           if (!(Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Ninimma\Ninimma.lnk")) { throw 'Shortcut missing' }
           $app = Start-Process -FilePath "$installed\ninimma.exe" -ArgumentList $env:TEMP -PassThru -RedirectStandardOutput "$env:TEMP\ninimma-out.log" -RedirectStandardError "$env:TEMP\ninimma-error.log"
           Start-Sleep -Seconds 8
@@ -74,7 +91,8 @@ jobs:
             Get-Content "$env:TEMP\ninimma-error.log"
             throw 'Installed GUI exited early'
           }
-          Stop-Process -Id $app.Id
+          taskkill /PID $app.Id /T /F | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw 'GUI cleanup failed' }
           $app.WaitForExit()
           $p = Start-Process -FilePath "$installed\Uninstall.exe" -ArgumentList '/S', "_?=$installed" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw 'Uninstall failed' }
@@ -116,7 +134,7 @@ jobs:
     needs: validate
     runs-on: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && 'ninimma-freebsd' || 'ubuntu-latest' }}
     strategy:
-      max-parallel: 1
+      max-parallel: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && 1 || 2 }}
       fail-fast: false
       matrix:
         release: ["14", "15"]
