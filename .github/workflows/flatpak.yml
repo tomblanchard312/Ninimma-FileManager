@@ -13,20 +13,23 @@ jobs:
   flatpak:
     runs-on: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && 'ninimma-linux' || 'ubuntu-22.04' }}
     steps:
-      - name: Require release tag as workflow ref
+      - uses: actions/checkout@v7
+      - name: Require matching packaging tag and package version
         env:
           RELEASE_TAG: ${{ inputs.tag }}
-        run: |
-          if [[ "$GITHUB_REF" != "refs/tags/$RELEASE_TAG" ]]; then
-            echo '::error::Run this workflow from the release tag, matching the tag input.'
-            exit 1
-          fi
-      - uses: actions/checkout@v7
-        with:
-          ref: refs/tags/${{ inputs.tag }}
-      - run: sudo apt-get update && sudo apt-get install -y flatpak flatpak-builder xvfb xauth dbus-x11
+        run: bash packaging/flatpak/validate-release.sh "$RELEASE_TAG" "$GITHUB_REF"
+      - run: sudo apt-get update && sudo apt-get install -y flatpak xvfb xauth dbus-x11
       - run: flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-      - run: flatpak-builder --user --disable-rofiles-fuse --force-clean --install-deps-from=flathub --repo=flatpak-repo target/flatpak packaging/flatpak/io.github.tomblanchard312.ninimma.yml
+      - name: Install maintained Flatpak Builder
+        run: |
+          flatpak install --user --noninteractive flathub org.flatpak.Builder
+          flatpak run org.flatpak.Builder --version
+      - name: Build with the SDK-compatible Builder
+        run: |
+          flatpak run --filesystem="$GITHUB_WORKSPACE" --filesystem="$RUNNER_TEMP" org.flatpak.Builder \
+            --user --disable-rofiles-fuse --force-clean --install-deps-from=flathub \
+            --state-dir="$RUNNER_TEMP/ninimma-flatpak-state" --repo="$GITHUB_WORKSPACE/flatpak-repo" \
+            "$GITHUB_WORKSPACE/target/flatpak" "$GITHUB_WORKSPACE/packaging/flatpak/io.github.tomblanchard312.ninimma.yml"
       - run: flatpak build-bundle flatpak-repo ninimma-linux-x64.flatpak io.github.tomblanchard312.ninimma --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo
       - run: bash packaging/flatpak/install-smoke-test.sh
       - uses: actions/upload-artifact@v7
