@@ -20,3 +20,5 @@ Installers and their checksum files have GitHub build provenance attestations. V
 Attestations do not replace Windows or Apple code signing.
 
 Windows release builds use the GUI subsystem and a statically linked C/C++ runtime. Installer validation checks the executable headers, runtime imports, version, Start menu shortcut, GUI startup, and uninstall behavior.
+
+Version 0.1.4 fixes Flatpak host-terminal discovery for VHD/VHDX operations and Open in Terminal. Software-center metadata now correctly advertises desktop displays and touch input. ctutils is updated to 0.4.4 to address its security advisory.
