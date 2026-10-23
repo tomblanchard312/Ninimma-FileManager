@@ -1,5 +1,6 @@
 """Keep installer and software-center versions aligned with the Rust package."""
 import re
+import subprocess
 import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -15,3 +16,16 @@ class ReleaseMetadataTests(unittest.TestCase):
         self.assertTrue(release.findtext('url').endswith('/v' + version))
         installer = (ROOT / 'packaging/windows/ninimma.nsi').read_text()
         self.assertIn('"DisplayVersion" "' + version + '"', installer)
+
+    def test_flatpak_packaging_ref_matches_version(self):
+        version = re.search(r'^version = "([^\"]+)"', (ROOT / 'Cargo.toml').read_text(), re.M)[1]
+        tag = 'v' + version
+        for release, ref, valid in [(tag, 'refs/tags/flatpak-' + tag, True),
+                                    (tag, 'refs/tags/' + tag, False),
+                                    (tag, 'refs/heads/main', False),
+                                    (tag, 'refs/tags/flatpak-v9.9.9', False),
+                                    ('v9.9.9', 'refs/tags/flatpak-v9.9.9', False)]:
+            with self.subTest(release=release, ref=ref):
+                result = subprocess.run(['bash', 'packaging/flatpak/validate-release.sh', release, ref],
+                                        cwd=ROOT, capture_output=True)
+                self.assertEqual(result.returncode == 0, valid)
