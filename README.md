@@ -308,5 +308,5 @@ To build the experimental Flatpak with matching release provenance, select the
 release tag as both the workflow ref and its tag input, or run:
 
 ```sh
-gh workflow run flatpak.yml --ref v0.1.2 -f tag=v0.1.2
+gh workflow run flatpak.yml --ref v0.1.3 -f tag=v0.1.3
 ```
