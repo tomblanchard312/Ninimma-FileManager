@@ -282,6 +282,7 @@ enum Action {
     Compress,
     /// Unpack a zip into a new folder next to it.
     Extract(PathBuf),
+    ExtractApproved(PathBuf, u64),
     /// Put items from the Recycle Bin back where they were.
     RestoreFromTrash(Vec<std::ffi::OsString>),
     /// Ask before deleting items in the Recycle Bin for good.
@@ -439,6 +440,10 @@ enum Dialog {
     },
     /// Renaming several items with a live preview.
     BulkRename(Box<BulkRenameDialog>),
+    ConfirmLargeArchive {
+        archive: PathBuf,
+        bytes: u64,
+    },
     ConfirmDelete {
         targets: Vec<PathBuf>,
     },
@@ -2427,7 +2432,21 @@ impl NinimmaUI {
                     );
                 }
             }
-            Action::Extract(zip) => {
+            Action::Extract(zip) => match archive::extracted_size(&zip) {
+                Ok(bytes) if bytes > archive::DEFAULT_EXTRACT_LIMIT => {
+                    self.dialog = Some(Dialog::ConfirmLargeArchive {
+                        archive: zip,
+                        bytes,
+                    });
+                }
+                Ok(_) => self.apply(
+                    Action::ExtractApproved(zip, archive::DEFAULT_EXTRACT_LIMIT),
+                    ctx,
+                    fs,
+                ),
+                Err(e) => self.status(e),
+            },
+            Action::ExtractApproved(zip, limit) => {
                 if let Some(dest) = archive::folder_for(&zip) {
                     self.reveal = Some(dest.clone());
                     self.spawn_job(
@@ -2435,7 +2454,13 @@ impl NinimmaUI {
                         "Extracted",
                         JobKind::NoHistory,
                         vec![dest],
-                        move |d, _| archive::extract(&zip, d),
+                        move |d, _| {
+                            if limit == archive::DEFAULT_EXTRACT_LIMIT {
+                                archive::extract(&zip, d)
+                            } else {
+                                archive::extract_with_limit(&zip, d, limit)
+                            }
+                        },
                     );
                 }
             }
@@ -6151,6 +6176,7 @@ impl NinimmaUI {
             return;
         };
         let mut keep_open = true;
+        let mut pending_extract = None;
         let mut pending_connect: Option<(String, Option<Credentials>)> = None;
         #[cfg(all(unix, not(target_os = "macos")))]
         let mut pending_open_with: Option<(open_with::App, Vec<PathBuf>, Option<String>)> = None;
@@ -6264,6 +6290,19 @@ impl NinimmaUI {
                         self.selection.set(renamed);
                         self.scroll_to_focus = true;
                     }
+                }
+                Dialog::ConfirmLargeArchive { archive, bytes } => {
+                    ui.heading("Extract a large archive?");
+                    ui.label(format!("This archive declares {:.2} GiB of output, above the normal 4 GiB limit. Continue only if you trust it and have enough free disk space. Extraction will stop if it exceeds this declared size.", *bytes as f64 / (1024.0 * 1024.0 * 1024.0)));
+                    ui.horizontal(|ui| {
+                        if ui.button("Extract larger archive").clicked() {
+                            pending_extract = Some((archive.clone(), *bytes));
+                            keep_open = false;
+                        }
+                        if ui.button("Cancel").clicked() {
+                            keep_open = false;
+                        }
+                    });
                 }
                 Dialog::ConfirmPurge { ids } => {
                     ui.heading("Delete permanently?");
@@ -6662,6 +6701,9 @@ impl NinimmaUI {
         }
         if keep_open {
             self.dialog = Some(dialog);
+        }
+        if let Some((archive, limit)) = pending_extract {
+            self.apply(Action::ExtractApproved(archive, limit), ctx, fs);
         }
         if let Some((uri, creds)) = pending_connect {
             self.start_connect(ctx, uri, creds);

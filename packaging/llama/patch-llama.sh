@@ -26,10 +26,15 @@ version=$(awk '$0 == "name = \"llama-cpp-sys-2\"" { getline; gsub(/version = |"/
 cargo fetch --locked --manifest-path "$root/Cargo.toml" >/dev/null
 src=$(ls -d "${CARGO_HOME:-$HOME/.cargo}"/registry/src/*/"llama-cpp-sys-2-$version" | head -n 1)
 dest="$root/target/llama-cpp-sys-2-patched"
-rm -rf "$dest"
-mkdir -p "$root/target"
-cp -R "$src" "$dest"
-(cd "$dest" && patch -s -p1 --forward < "$root/packaging/llama/llama-cpp-sys-2.patch") >&2
+patch_file="$root/packaging/llama/llama-cpp-sys-2.patch"
+# Preserve a validated cached copy's mtimes, or Cargo rebuilds all of llama.cpp.
+if ! cmp -s "$src/Cargo.toml" "$dest/Cargo.toml" || ! cmp -s "$patch_file" "$dest/.applied-patch"; then
+    rm -rf "$dest"
+    mkdir -p "$root/target"
+    cp -pR "$src" "$dest"
+    (cd "$dest" && patch -s -p1 --forward < "$patch_file") >&2
+    cp "$patch_file" "$dest/.applied-patch"
+fi
 
 # A path dependency has no source or checksum in the lock file.
 awk '
