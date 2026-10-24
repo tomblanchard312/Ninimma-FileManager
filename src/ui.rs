@@ -6637,6 +6637,22 @@ impl NinimmaUI {
                                 .size(FONT_SIZE_SMALL),
                         );
                         ui.add_space(8.0);
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label("Photo place names:");
+                            ui.hyperlink_to("GeoNames", "https://www.geonames.org");
+                            ui.label("(unmodified data), licensed under");
+                            ui.hyperlink_to("CC BY 4.0", "https://creativecommons.org/licenses/by/4.0/");
+                        });
+                        ui.collapsing("Licenses, model downloads and third-party notices", |ui| {
+                            ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
+                                ui.label(include_str!("../NOTICE"));
+                                ui.separator();
+                                ui.label(include_str!("../LICENSE"));
+                                ui.separator();
+                                ui.label(include_str!("../packaging/icons/LICENSE-lucide"));
+                            });
+                        });
+                        ui.add_space(8.0);
                         if ui.button("Close").clicked() {
                             keep_open = false;
                         }
