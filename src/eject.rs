@@ -29,14 +29,14 @@ fn command(path: &Path) -> Command {
     #[cfg(windows)]
     {
         // Explorer's own Eject: flushes and powers the device down.
-        let drive = path.to_string_lossy().replace('\'', "''");
+        let drive = crate::powershell::literal(&path.to_string_lossy());
         let mut c = Command::new("powershell");
         c.args([
             "-NoProfile",
             "-NonInteractive",
             "-Command",
             &format!(
-                "(New-Object -ComObject Shell.Application).Namespace(17).ParseName('{drive}').InvokeVerb('Eject')"
+                "(New-Object -ComObject Shell.Application).Namespace(17).ParseName({drive}).InvokeVerb('Eject')"
             ),
         ]);
         c
