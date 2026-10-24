@@ -84,6 +84,16 @@ jobs:
           $installed = Join-Path $env:LOCALAPPDATA 'Programs\Ninimma'
           $p = Start-Process -FilePath .\ninimma-windows-x64-setup.exe -ArgumentList '/S' -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw 'Install failed' }
+          $notices = @{
+            'LICENSE' = 'LICENSE'
+            'NOTICE' = 'NOTICE'
+            'LICENSE-lucide' = 'packaging/icons/LICENSE-lucide'
+          }
+          foreach ($name in $notices.Keys) {
+            $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $installed $name) -ErrorAction Stop).Hash
+            $expected = (Get-FileHash -Algorithm SHA256 -LiteralPath $notices[$name] -ErrorAction Stop).Hash
+            if ($actual -ne $expected) { throw "Installed notice differs: $name" }
+          }
           $p = Start-Process -FilePath "$installed\ninimma.exe" -ArgumentList '--version' -Wait -PassThru -RedirectStandardOutput "$env:TEMP\ninimma-installed-version.txt"
           if ($p.ExitCode -ne 0 -or (Get-Content "$env:TEMP\ninimma-installed-version.txt" -Raw).Trim() -ne (Get-Content target/release/version.txt -Raw).Trim()) { throw 'Installed version check failed' }
           if (!(Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Ninimma\Ninimma.lnk")) { throw 'Shortcut missing' }

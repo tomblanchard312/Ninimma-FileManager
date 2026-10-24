@@ -2531,3 +2531,17 @@ fn windows_shift_delete_still_requires_confirmation_in_file_view() {
         "confirmation has not been accepted"
     );
 }
+
+#[test]
+fn about_displays_geonames_and_bundled_model_notices() {
+    let folder = tempfile::tempdir().unwrap();
+    let mut h = harness(folder.path());
+    h.state_mut().ui.dialog = Some(Dialog::About);
+    h.run_steps(3);
+    h.get_by_label("GeoNames");
+    h.get_by_label("CC BY 4.0");
+    h.get_by_label("Licenses, model downloads and third-party notices")
+        .click();
+    h.run_steps(3);
+    h.get_by_label_contains("Picture search downloads OpenAI CLIP ViT-B/32");
+}
