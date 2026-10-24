@@ -32,7 +32,7 @@ const MAX_PREVIEWS: usize = 8;
 const MAX_QUEUE: usize = 400;
 /// Disk cache entries unused for this long are pruned at startup.
 const DISK_CACHE_MAX_AGE: Duration = Duration::from_secs(60 * 60 * 24 * 90);
-const SOURCE_SIZE_LIMIT: u64 = 200_000_000;
+const SOURCE_SIZE_LIMIT: u64 = crate::image_ops::MAX_SOURCE_BYTES;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum ThumbSize {
@@ -547,10 +547,9 @@ pub(crate) fn decode_oriented(path: &Path) -> Option<DynamicImage> {
     }
     let mut reader = ImageReader::open(path).ok()?.with_guessed_format().ok()?;
     // Refuse decompression bombs rather than allocating gigabytes.
-    let mut limits = image::Limits::default();
-    limits.max_alloc = Some(1024 * 1024 * 1024);
-    reader.limits(limits);
+    reader.limits(crate::image_ops::decode_limits());
     let mut decoder = reader.into_decoder().ok()?;
+    crate::image_ops::limit_decoder(&mut decoder).ok()?;
     let orientation = decoder
         .orientation()
         .unwrap_or(image::metadata::Orientation::NoTransforms);

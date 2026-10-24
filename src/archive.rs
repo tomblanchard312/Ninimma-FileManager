@@ -9,6 +9,22 @@ use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
 use zip::write::SimpleFileOptions;
 
+/// Larger declared output requires explicit approval in the extraction dialog.
+pub const DEFAULT_EXTRACT_LIMIT: u64 = 4 * 1024 * 1024 * 1024;
+
+pub fn extracted_size(archive: &Path) -> Result<u64, String> {
+    let file = fs::File::open(archive).map_err(|e| format!("Couldn't open archive: {e}"))?;
+    let mut zip = zip::ZipArchive::new(file).map_err(|e| format!("Couldn't read archive: {e}"))?;
+    (0..zip.len()).try_fold(0u64, |total, i| {
+        let entry = zip
+            .by_index(i)
+            .map_err(|e| format!("Couldn't read archive: {e}"))?;
+        total
+            .checked_add(entry.size())
+            .ok_or_else(|| "Archive output size overflows the extraction limit".into())
+    })
+}
+
 /// Where compressing `paths` puts the archive: named after the first item,
 /// next to it.
 pub fn zip_name_for(paths: &[PathBuf]) -> Option<PathBuf> {
@@ -119,12 +135,20 @@ pub fn folder_for(archive: &Path) -> Option<PathBuf> {
 /// outside it ("../", absolute paths) are refused. A failed extraction
 /// removes the folder again.
 pub fn extract(archive: &Path, dest: &Path) -> Result<(), String> {
+    extract_with_limit(archive, dest, DEFAULT_EXTRACT_LIMIT)
+}
+
+pub fn extract_with_limit(archive: &Path, dest: &Path, limit: u64) -> Result<(), String> {
+    if extracted_size(archive)? > limit {
+        return Err("Archive exceeds the approved extraction size; confirm the larger size before extracting".into());
+    }
     let file = fs::File::open(archive)
         .map_err(|e| format!("Couldn't open {}: {e}", display_name(archive)))?;
     let mut zip = zip::ZipArchive::new(file)
         .map_err(|e| format!("{} isn't a readable zip file: {e}", display_name(archive)))?;
     fs::create_dir(dest).map_err(|e| format!("Couldn't create {}: {e}", display_name(dest)))?;
     let result = (|| {
+        let mut remaining = limit;
         for i in 0..zip.len() {
             let mut entry = zip
                 .by_index(i)
@@ -158,17 +182,8 @@ pub fn extract(archive: &Path, dest: &Path) -> Result<(), String> {
                 .create_new(true)
                 .open(&target)
                 .map_err(|e| format!("Couldn't create {}: {e}", display_name(&target)))?;
-            let mut buf = [0u8; 64 * 1024];
-            loop {
-                let n = entry
-                    .read(&mut buf)
-                    .map_err(|e| format!("Couldn't extract {}: {e}", display_name(&target)))?;
-                if n == 0 {
-                    break;
-                }
-                out.write_all(&buf[..n])
-                    .map_err(|e| format!("Couldn't extract {}: {e}", display_name(&target)))?;
-            }
+            copy_bounded(&mut entry, &mut out, &mut remaining)
+                .map_err(|e| format!("Couldn't extract {}: {e}", display_name(&target)))?;
             #[cfg(unix)]
             if let Some(mode) = entry.unix_mode() {
                 use std::os::unix::fs::PermissionsExt;
@@ -184,9 +199,62 @@ pub fn extract(archive: &Path, dest: &Path) -> Result<(), String> {
     result
 }
 
+fn copy_bounded(
+    from: &mut impl Read,
+    out: &mut impl Write,
+    remaining: &mut u64,
+) -> std::io::Result<()> {
+    let mut buf = [0u8; 64 * 1024];
+    loop {
+        let n = from.read(&mut buf)?;
+        if n == 0 {
+            return Ok(());
+        }
+        *remaining = remaining
+            .checked_sub(n as u64)
+            .ok_or_else(|| std::io::Error::other("Archive exceeds the approved extraction size"))?;
+        out.write_all(&buf[..n])?;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn extraction_budget_counts_actual_bytes_across_entries() {
+        let mut budget = 100;
+        let mut first = Vec::new();
+        copy_bounded(&mut &b"a".repeat(60)[..], &mut first, &mut budget).unwrap();
+        let mut second = Vec::new();
+        assert!(copy_bounded(&mut &b"b".repeat(60)[..], &mut second, &mut budget).is_err());
+        assert_eq!(first.len(), 60);
+        assert!(second.is_empty());
+        assert_eq!(budget, 40);
+    }
+
+    #[test]
+    fn extraction_requires_approval_above_limit_and_accepts_exact_limit() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source.txt");
+        fs::write(&source, b"ten bytes!").unwrap();
+        let zip = dir.path().join("test.zip");
+        compress(&[source], &zip).unwrap();
+        assert_eq!(extracted_size(&zip).unwrap(), 10);
+        let dest = dir.path().join("output");
+        assert!(extract_with_limit(&zip, &dest, 9).is_err());
+        assert!(!dest.exists());
+        extract_with_limit(&zip, &dest, 10).unwrap();
+        assert_eq!(fs::read(dest.join("source.txt")).unwrap(), b"ten bytes!");
+        // A forged central-directory size must not bypass the streamed budget.
+        let mut data = fs::read(&zip).unwrap();
+        let central = data.windows(4).position(|b| b == b"PK\x01\x02").unwrap();
+        data[central + 24..central + 28].copy_from_slice(&1u32.to_le_bytes());
+        fs::write(&zip, data).unwrap();
+        let failed = dir.path().join("failed");
+        assert!(extract_with_limit(&zip, &failed, 5).is_err());
+        assert!(!failed.exists(), "partial extraction must be removed");
+    }
 
     #[test]
     fn compress_then_extract_round_trips_and_never_overwrites() {
