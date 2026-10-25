@@ -119,13 +119,8 @@ fn launch_linux(operation: Operation, target: &str, read_only: bool) -> Result<(
 }
 
 #[cfg(any(windows, test))]
-fn powershell_literal(value: &str) -> String {
-    format!("'{}'", value.replace('\'', "''"))
-}
-
-#[cfg(any(windows, test))]
 fn windows_script(op: Operation, target: &str, read_only: bool, recovery: bool) -> String {
-    let target = powershell_literal(target);
+    let target = crate::powershell::literal(target);
     let action = match op {
         Operation::Mount => format!(
             "Mount-DiskImage -ImagePath {target} -Access {} -ErrorAction Stop | Out-Null; Get-DiskImage -ImagePath {target} | Get-Disk | Get-Partition | Format-Table PartitionNumber, DriveLetter, Size",
@@ -216,6 +211,13 @@ mod tests {
         );
         assert!(script.contains("-ImagePath 'C:\\a''; Write-Host injected; #.vhdx'"));
         assert!(script.contains("-Access ReadOnly"));
+        let script = windows_script(
+            Operation::Mount,
+            "C:\\a\u{2019}; Write-Host injected; #.vhdx",
+            true,
+            false,
+        );
+        assert!(script.contains("-ImagePath 'C:\\a\u{2019}\u{2019}; Write-Host injected; #.vhdx'"));
         assert!(!script.contains("-Access ReadWrite"));
     }
 
