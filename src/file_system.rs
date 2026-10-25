@@ -809,26 +809,35 @@ pub fn mount_table() -> String {
     }
 }
 
-/// FreeBSD has no /proc/mounts; ask the kernel (getmntinfo) and translate
-/// its filesystem names to the Linux ones the parsers know.
+/// FreeBSD has no /proc/mounts; use a caller-owned mount buffer.
 #[cfg(target_os = "freebsd")]
 fn freebsd_mount_table() -> String {
-    use std::ffi::CStr;
-    let mut buf: *mut libc::statfs = std::ptr::null_mut();
-    // MNT_NOWAIT: don't block on unresponsive network mounts.
-    let n = unsafe { libc::getmntinfo(&mut buf, libc::MNT_NOWAIT) };
-    if n <= 0 || buf.is_null() {
+    // SAFETY: a null buffer asks only for the current mount count.
+    let count = unsafe { libc::getfsstat(std::ptr::null_mut(), 0, libc::MNT_NOWAIT) };
+    if count <= 0 {
         return String::new();
     }
-    // The buffer belongs to libc and stays valid until the next call.
-    let mounts = unsafe { std::slice::from_raw_parts(buf, n as usize) };
+    // Allow a few new mounts between the two calls; a full buffer is a safe snapshot.
+    // SAFETY: statfs contains only integer and fixed-array fields, valid when zeroed.
+    let mut mounts = vec![unsafe { std::mem::zeroed::<libc::statfs>() }; count as usize + 8];
+    let Ok(bytes) = std::mem::size_of_val(mounts.as_slice()).try_into() else {
+        return String::new();
+    };
+    // SAFETY: mounts owns a writable buffer of exactly `bytes` bytes. No libc shared buffer.
+    let copied = unsafe { libc::getfsstat(mounts.as_mut_ptr(), bytes, libc::MNT_NOWAIT) };
+    if copied <= 0 {
+        return String::new();
+    }
     let field = |chars: &[libc::c_char]| {
-        unsafe { CStr::from_ptr(chars.as_ptr()) }
-            .to_string_lossy()
-            .replace(' ', "\\040")
+        let bytes: Vec<u8> = chars
+            .iter()
+            .map(|&c| c as u8)
+            .take_while(|&c| c != 0)
+            .collect();
+        String::from_utf8_lossy(&bytes).replace(' ', "\\040")
     };
     let mut out = String::new();
-    for m in mounts {
+    for m in mounts.iter().take(copied as usize) {
         let fs_type = freebsd_fs_type(&field(&m.f_fstypename));
         out.push_str(&format!(
             "{} {} {} rw 0 0\n",
@@ -941,6 +950,23 @@ pub fn parse_user_dirs(contents: &str, home: &Path) -> std::collections::HashMap
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "freebsd")]
+    #[test]
+    fn mount_snapshots_are_safe_to_enumerate_concurrently() {
+        let readers: Vec<_> = (0..8)
+            .map(|_| {
+                std::thread::spawn(|| {
+                    for _ in 0..100 {
+                        assert!(!freebsd_mount_table().is_empty());
+                    }
+                })
+            })
+            .collect();
+        for reader in readers {
+            reader.join().unwrap();
+        }
+    }
 
     #[test]
     fn mounts_keep_user_drives_only() {

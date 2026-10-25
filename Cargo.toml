@@ -166,7 +166,7 @@ drag = "2.1"
 eframe = { version = "0.37", default-features = false, features = ["wgpu"] }
 windows-native-keyring-store = "1"   # Windows Credential Manager (DPAPI)
 rusqlite = { version = "0.40", features = ["bundled-sqlcipher-vendored-openssl"] }
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Memory", "Win32_Storage_FileSystem", "Win32_System_Power", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Memory", "Win32_System_SystemInformation", "Win32_Storage_FileSystem", "Win32_System_Power", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 apple-native-keyring-store = { version = "1", features = ["keychain"] }   # login Keychain

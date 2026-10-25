@@ -11,48 +11,102 @@ pub const KEY_LEN: usize = 32;
 /// the OS allows it, zeroed on drop, and `Debug` shows only that it's a
 /// secret, so it can't leak into logs or panic messages.
 pub struct SecretBytes {
-    bytes: Box<[u8]>,
+    bytes: std::ptr::NonNull<u8>,
+    len: usize,
+    layout: std::alloc::Layout,
     locked: bool,
+}
+
+// SAFETY: this allocation is exclusively owned; mutation requires &mut self,
+// and shared references expose only immutable bytes, just like Box<[u8]>.
+unsafe impl Send for SecretBytes {}
+unsafe impl Sync for SecretBytes {}
+
+#[cfg(unix)]
+fn page_size() -> usize {
+    // SAFETY: sysconf has no pointer arguments or caller-owned state.
+    let size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) };
+    usize::try_from(size)
+        .ok()
+        .filter(|n| n.is_power_of_two())
+        .expect("valid OS page size")
+}
+
+#[cfg(windows)]
+fn page_size() -> usize {
+    use windows_sys::Win32::System::SystemInformation::{GetSystemInfo, SYSTEM_INFO};
+    let mut info = std::mem::MaybeUninit::<SYSTEM_INFO>::uninit();
+    // SAFETY: GetSystemInfo initializes the whole caller-owned structure.
+    unsafe {
+        GetSystemInfo(info.as_mut_ptr());
+        info.assume_init().dwPageSize as usize
+    }
+}
+
+#[cfg(not(any(unix, windows)))]
+fn page_size() -> usize {
+    1
 }
 
 impl SecretBytes {
     /// A new random key of `len` bytes from the OS random number generator.
     pub fn random(len: usize) -> Result<Self, getrandom::Error> {
         let mut secret = Self::zeroed(len);
-        getrandom::fill(&mut secret.bytes)?;
+        getrandom::fill(secret.bytes_mut())?;
         Ok(secret)
     }
 
     /// Takes ownership of `bytes`, wiping the vector it came in.
     pub fn from_vec(mut bytes: Vec<u8>) -> Self {
         let mut secret = Self::zeroed(bytes.len());
-        secret.bytes.copy_from_slice(&bytes);
+        secret.bytes_mut().copy_from_slice(&bytes);
         bytes.zeroize();
         secret
     }
 
     fn zeroed(len: usize) -> Self {
-        let bytes = vec![0u8; len].into_boxed_slice();
-        let locked = lock_memory(&bytes);
-        Self { bytes, locked }
+        // A whole, aligned allocation prevents another secret sharing a locked page.
+        let page = page_size();
+        let size = len.max(1).checked_add(page - 1).expect("secret too large") / page * page;
+        let layout = std::alloc::Layout::from_size_align(size, page).expect("secret layout");
+        // SAFETY: layout is nonzero and valid; the allocation is owned until Drop.
+        let raw = unsafe { std::alloc::alloc_zeroed(layout) };
+        let bytes =
+            std::ptr::NonNull::new(raw).unwrap_or_else(|| std::alloc::handle_alloc_error(layout));
+        let mut secret = Self {
+            bytes,
+            len,
+            layout,
+            locked: false,
+        };
+        secret.locked = lock_memory(secret.expose());
+        secret
     }
 
     pub fn expose(&self) -> &[u8] {
-        &self.bytes
+        // SAFETY: len is within our live allocation, borrowed immutably.
+        unsafe { std::slice::from_raw_parts(self.bytes.as_ptr(), self.len) }
+    }
+
+    fn bytes_mut(&mut self) -> &mut [u8] {
+        // SAFETY: &mut self gives exclusive access to the live allocation.
+        unsafe { std::slice::from_raw_parts_mut(self.bytes.as_ptr(), self.len) }
     }
 
     #[cfg(test)]
     pub fn len(&self) -> usize {
-        self.bytes.len()
+        self.len
     }
 }
 
 impl Drop for SecretBytes {
     fn drop(&mut self) {
-        self.bytes.zeroize();
+        self.bytes_mut().zeroize();
         if self.locked {
-            unlock_memory(&self.bytes);
+            unlock_memory(self.expose());
         }
+        // SAFETY: this is the original pointer/layout, and all borrows ended before Drop.
+        unsafe { std::alloc::dealloc(self.bytes.as_ptr(), self.layout) };
     }
 }
 
@@ -65,11 +119,11 @@ impl fmt::Debug for SecretBytes {
 impl PartialEq for SecretBytes {
     /// Constant-time comparison.
     fn eq(&self, other: &Self) -> bool {
-        self.bytes.len() == other.bytes.len()
+        self.len == other.len
             && self
-                .bytes
+                .expose()
                 .iter()
-                .zip(other.bytes.iter())
+                .zip(other.expose().iter())
                 .fold(0u8, |acc, (a, b)| acc | (a ^ b))
                 == 0
     }
@@ -142,6 +196,23 @@ pub fn from_hex(text: &str) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn live_secrets_own_disjoint_whole_pages() {
+        let page = page_size();
+        for len in [0, 1, KEY_LEN, page + 1] {
+            let a = SecretBytes::zeroed(len);
+            let b = SecretBytes::from_vec(vec![42; len]);
+            let start_a = a.expose().as_ptr() as usize;
+            let start_b = b.expose().as_ptr() as usize;
+            assert_eq!(start_a % page, 0);
+            assert_eq!(start_b % page, 0);
+            assert_eq!(a.layout.size() % page, 0);
+            assert!(start_a + a.layout.size() <= start_b || start_b + b.layout.size() <= start_a);
+            drop(a);
+            assert_eq!(b.expose(), vec![42; len]);
+        }
+    }
 
     #[test]
     fn debug_never_shows_the_secret() {

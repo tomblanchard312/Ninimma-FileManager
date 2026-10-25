@@ -16,7 +16,8 @@ pub fn on_battery() -> bool {
 /// Whether the system is busy enough that indexing should wait: load
 /// above the number of cores, or under 10% of memory available. Linux only.
 pub fn under_pressure() -> bool {
-    platform::under_pressure()
+    // Unrelated CI builds must not pause index workers in deterministic unit tests.
+    !cfg!(test) && platform::under_pressure()
 }
 
 /// Free bytes on the disk holding `path`.
@@ -344,7 +345,10 @@ mod tests {
     #[test]
     fn system_checks_answer_without_panicking() {
         let _ = on_battery();
-        let _ = under_pressure();
+        assert!(
+            !under_pressure(),
+            "unit tests must ignore unrelated host load"
+        );
         assert!(!is_network_path(&std::env::temp_dir()));
         #[cfg(any(unix, windows))]
         assert!(free_space(&std::env::temp_dir()).is_some());

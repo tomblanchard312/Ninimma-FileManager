@@ -10,19 +10,60 @@ permissions:
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
+env:
+  # Smaller debug artifacts make compilation and cache transfer cheaper.
+  CARGO_INCREMENTAL: "0"
+  CARGO_PROFILE_DEV_DEBUG: "0"
+  CARGO_PROFILE_TEST_DEBUG: "0"
 jobs:
   check:
     runs-on: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'ninimma-linux' || 'ubuntu-22.04' }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # Keep required check names present for documentation-only PRs.
+      - name: Classify changed files
+        id: changes
+        run: |
+          python3 -m unittest discover -s .github/scripts -p 'test_docs_only.py'
+          python3 .github/scripts/docs_only.py
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.changes.outputs.docs_only != 'true'
         with:
           components: rustfmt, clippy
+      - name: Identify compiler
+        id: compiler
+        shell: bash
+        run: |
+          echo "hash=$(rustc -vV | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "CI_RUST_TOOLCHAIN=$(rustc --version | cut -d' ' -f2)" >> "$GITHUB_ENV"
+
+      - name: Restore trusted build cache
+        id: build-cache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/debug/.fingerprint
+            target/debug/build
+            target/debug/deps
+          key: ci-v1-ubuntu2204-linux-${{ steps.compiler.outputs.hash }}-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml', 'build.rs', '.github/workflows/ci.yml', '.cargo/**', 'vendor/**', 'packaging/ci/**', 'packaging/llama/**') }}
+          restore-keys: ci-v1-ubuntu2204-linux-${{ steps.compiler.outputs.hash }}-
+
       - run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config cmake clang libclang-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libwayland-dev
+        if: steps.changes.outputs.docs_only != 'true'
       - name: Locate compiler builtin headers
+        if: steps.changes.outputs.docs_only != 'true'
         run: echo "BINDGEN_EXTRA_CLANG_ARGS=-I$(gcc -print-file-name=include)" >> "$GITHUB_ENV"
       - run: cargo fmt --all -- --check
+        if: steps.changes.outputs.docs_only != 'true'
       - run: python3 -m unittest discover -s packaging/linux
+        if: steps.changes.outputs.docs_only != 'true'
       - run: cargo clippy --locked --all-targets -- -D warnings
+        if: steps.changes.outputs.docs_only != 'true'
       - run: cargo test --locked
+        if: steps.changes.outputs.docs_only != 'true'
       - run: cargo test --locked --no-default-features
+        if: steps.changes.outputs.docs_only != 'true'

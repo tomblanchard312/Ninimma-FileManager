@@ -24,14 +24,24 @@ jobs:
         language: [rust, python, actions]
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # Keep required check names present for documentation-only PRs.
+      - name: Classify changed files
+        id: changes
+        run: |
+          python3 -m unittest discover -s .github/scripts -p 'test_docs_only.py'
+          python3 .github/scripts/docs_only.py
       - uses: dtolnay/rust-toolchain@stable
-        if: matrix.language == 'rust'
+        if: steps.changes.outputs.docs_only != 'true' && matrix.language == 'rust'
       - uses: github/codeql-action/init@v4
+        if: steps.changes.outputs.docs_only != 'true'
         with:
           languages: ${{ matrix.language }}
           build-mode: none
           ram: 6144
           threads: 2
       - uses: github/codeql-action/analyze@v4
+        if: steps.changes.outputs.docs_only != 'true'
         with:
           category: '/language:${{ matrix.language }}'
