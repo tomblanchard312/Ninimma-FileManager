@@ -214,8 +214,10 @@ fn shared_and_legacy_dirs() -> Option<(PathBuf, PathBuf)> {
 }
 
 /// Move model files from the app's former folder into the shared one, so every app finds them
-/// in one place. A file the shared folder already has (same name and size) is a duplicate and
-/// is removed; one that differs is left where it is. Errors leave files in place.
+/// in one place. Files are only renamed: instant and atomic, never copied (a copy across
+/// filesystems could take minutes on the GUI thread) and never deleted. A file that can't be
+/// renamed, or whose name the shared folder already has, stays where it is and
+/// [`path_of`] still finds it there. Hidden files (partial downloads) aren't moved.
 pub fn move_legacy_models(legacy: &Path, shared: &Path) {
     let Ok(entries) = fs::read_dir(legacy) else {
         return;
@@ -225,36 +227,31 @@ pub fn move_legacy_models(legacy: &Path, shared: &Path) {
     }
     for entry in entries.flatten() {
         let name = entry.file_name();
-        if !name
-            .to_string_lossy()
-            .to_ascii_lowercase()
-            .ends_with(".gguf")
-        {
+        if name.to_string_lossy().starts_with('.') {
             continue;
         }
         let (from, to) = (entry.path(), shared.join(&name));
-        let Ok(meta) = fs::metadata(&from) else {
-            continue;
-        };
-        if !meta.is_file() {
+        if !fs::symlink_metadata(&from).is_ok_and(|m| m.is_file())
+            || fs::symlink_metadata(&to).is_ok()
+        {
             continue;
         }
-        match fs::metadata(&to) {
-            Ok(existing) if existing.len() == meta.len() => {
-                let _ = fs::remove_file(&from);
-            }
-            Ok(_) => {}
-            Err(_) => {
-                if fs::rename(&from, &to).is_err() && fs::copy(&from, &to).is_ok() {
-                    let _ = fs::remove_file(&from);
-                }
-            }
-        }
+        let _ = fs::rename(&from, &to);
     }
 }
 
 pub fn path_of(spec: &ModelSpec) -> Option<PathBuf> {
-    Some(models_dir()?.join(spec.file))
+    let shared = models_dir()?.join(spec.file);
+    // A file that couldn't move (another filesystem, or the name was taken) is still used.
+    if !cfg!(test) && !shared.exists() {
+        if let Some((_, legacy)) = shared_and_legacy_dirs() {
+            let old = legacy.join(spec.file);
+            if old.is_file() {
+                return Some(old);
+            }
+        }
+    }
+    Some(shared)
 }
 
 /// Whether the model file is there (right size; the checksum is checked
@@ -490,28 +487,38 @@ mod tests {
     }
 
     #[test]
-    fn models_move_once_into_the_shared_folder() {
+    fn models_move_into_the_shared_folder_without_losing_anything() {
         let base =
             std::env::temp_dir().join(format!("ninimma-filemanager-legacy-{}", std::process::id()));
         let (legacy, shared) = (base.join("old"), base.join("SharedAI").join("models"));
         fs::create_dir_all(&legacy).unwrap();
         fs::create_dir_all(&shared).unwrap();
         fs::write(legacy.join("a.gguf"), b"aaa").unwrap();
-        fs::write(legacy.join("dup.gguf"), b"dd").unwrap();
-        fs::write(shared.join("dup.gguf"), b"dd").unwrap();
-        fs::write(legacy.join("differs.gguf"), b"new").unwrap();
-        fs::write(shared.join("differs.gguf"), b"older!").unwrap();
-        fs::write(legacy.join("notes.txt"), b"keep").unwrap();
+        // The picture model isn't GGUF: it moves too.
+        fs::write(legacy.join("clip.safetensors"), b"clip").unwrap();
+        fs::write(legacy.join("clip-tokenizer.json"), b"tok").unwrap();
+        // Same name already shared (even same size): nothing is deleted or overwritten.
+        fs::write(legacy.join("dup.gguf"), b"good").unwrap();
+        fs::write(shared.join("dup.gguf"), b"bad!").unwrap();
+        fs::write(legacy.join(".x.gguf.partial"), b"p").unwrap();
         move_legacy_models(&legacy, &shared);
         assert_eq!(fs::read(shared.join("a.gguf")).unwrap(), b"aaa");
-        assert!(!legacy.join("a.gguf").exists(), "moved");
-        assert!(!legacy.join("dup.gguf").exists(), "duplicate removed");
-        assert!(
-            legacy.join("differs.gguf").exists(),
-            "a different file is left alone"
+        assert_eq!(fs::read(shared.join("clip.safetensors")).unwrap(), b"clip");
+        assert_eq!(
+            fs::read(shared.join("clip-tokenizer.json")).unwrap(),
+            b"tok"
         );
-        assert_eq!(fs::read(shared.join("differs.gguf")).unwrap(), b"older!");
-        assert!(legacy.join("notes.txt").exists(), "only models move");
+        assert!(!legacy.join("a.gguf").exists(), "moved, not copied");
+        assert_eq!(fs::read(legacy.join("dup.gguf")).unwrap(), b"good", "kept");
+        assert_eq!(
+            fs::read(shared.join("dup.gguf")).unwrap(),
+            b"bad!",
+            "not overwritten"
+        );
+        assert!(
+            legacy.join(".x.gguf.partial").exists(),
+            "partial downloads stay"
+        );
         let _ = fs::remove_dir_all(&base);
     }
 }
