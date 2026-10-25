@@ -49,14 +49,14 @@ const FONT_SIZE_LARGE: f32 = 16.0;
 const BUTTON_MIN_SIZE: f32 = 36.0;
 
 // Icon view sizing, in logical pixels. Ctrl+scroll moves continuously
-// between these, like Explorer.
+// between these.
 const MIN_ICON_SIZE: f32 = 32.0;
 const MAX_ICON_SIZE: f32 = 256.0;
 const DETAILS_ROW_HEIGHT: f32 = 28.0;
 const TILE_SIZE: Vec2 = Vec2::new(290.0, 72.0);
 const GRID_SPACING: f32 = 6.0;
 
-/// Explorer's named presets (Ctrl+Shift+1..4).
+/// Named view presets (Ctrl+Shift+1..4).
 const ICON_PRESETS: [(&str, f32); 4] = [
     ("Extra large icons", 256.0),
     ("Large icons", 128.0),
@@ -124,7 +124,7 @@ pub struct Settings {
     /// The view for picture folders, once chosen with "Apply to all
     /// folders" in one (otherwise large icons).
     pub picture_view: Option<ViewSettings>,
-    /// Explorer remembers the view per folder; so do we.
+    /// Remember the view per folder.
     pub folder_views: HashMap<PathBuf, (ViewSettings, u64)>,
     pub show_hidden: bool,
     pub show_nav_pane: bool,
@@ -227,7 +227,7 @@ impl Settings {
 /// A place that isn't a folder, shown in place of the folder's contents.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Special {
-    /// The drives and network places, like Explorer's This PC.
+    /// Drives and network places shown in This PC.
     ThisPc,
     /// Files opened and folders visited recently.
     Recent,
@@ -245,7 +245,7 @@ impl Special {
     }
 }
 
-/// Explorer's name for it, or the desktop's.
+/// The platform's name for it.
 const TRASH_LABEL: &str = if cfg!(windows) {
     "🗑 Recycle Bin"
 } else {
@@ -1805,7 +1805,7 @@ impl NinimmaUI {
     }
 
     /// Opens the tree out to the folder just opened, from the closest
-    /// place it's under (Quick Access, a pin or a drive), like Explorer.
+    /// place it's under (Quick Access, a pin or a drive).
     fn follow_tree(&mut self, ctx: &egui::Context, fs: &FileSystem) {
         let Some(target) = self.tree_follow.take() else {
             return;
@@ -1871,7 +1871,7 @@ impl NinimmaUI {
             None => self.settings.default_view,
         };
         self.refresh_list(fs);
-        // Going up selects the folder we came from, like Explorer.
+        // Going up selects the folder we came from.
         if let Some(prev) = previous {
             if prev.parent() == Some(path.as_path()) && self.list.paths.iter().any(|p| p == prev) {
                 self.selection.select_only(prev);
@@ -2370,7 +2370,7 @@ impl NinimmaUI {
                 self.settings.item_checkboxes = !self.settings.item_checkboxes;
             }
             Action::ApplyViewToAll => {
-                // Like Explorer's folder templates: pictures, and the rest.
+                // Folder templates: pictures, and the rest.
                 let pictures = looks_like_picture_folder(fs.get_items());
                 if pictures {
                     self.settings.picture_view = Some(self.view);
@@ -2514,7 +2514,7 @@ impl NinimmaUI {
                 if let Some(first) = paths.first().cloned() {
                     #[cfg(windows)]
                     {
-                        // Explorer's own Open With dialog.
+                        // The system Open With dialog.
                         let _ = std::process::Command::new("rundll32.exe")
                             .arg("shell32.dll,OpenAs_RunDLL")
                             .arg(&first)
@@ -2659,7 +2659,7 @@ impl NinimmaUI {
                 if self.special.is_some() {
                     // Already above every folder.
                 } else if fs.get_parent_path().is_none() {
-                    // Up from the top of a drive goes to This PC, as in Explorer.
+                    // Up from the top of a drive goes to This PC.
                     self.special = Some(Special::ThisPc);
                     self.selection.clear();
                 } else {
@@ -3018,7 +3018,7 @@ impl NinimmaUI {
                 let ascending = if self.view.sort_by == by {
                     !self.view.sort_ascending
                 } else {
-                    // Explorer sorts dates and sizes newest/largest first by default.
+                    // Sort dates and sizes newest/largest first by default.
                     !matches!(by, SortBy::Modified | SortBy::Size)
                 };
                 self.set_view(ViewSettings {
@@ -3059,7 +3059,7 @@ impl NinimmaUI {
             .drop_folder
             .take()
             .unwrap_or_else(|| fs.get_current_path().to_path_buf());
-        // Dropping items back where they already are does nothing, as in Explorer.
+        // Dropping items back where they already are does nothing.
         let paths: Vec<PathBuf> = dropped
             .into_iter()
             .filter(|p| p.parent() != Some(dest.as_path()) && *p != dest)
@@ -3319,7 +3319,7 @@ impl NinimmaUI {
             }
             clear = i.consume_key(Modifiers::NONE, Key::Escape);
 
-            // View sizes: Ctrl+Shift+1..4 as in Explorer, Ctrl +/- to step.
+            // View sizes: Ctrl+Shift+1..4, Ctrl +/- to step.
             let presets = [Key::Num1, Key::Num2, Key::Num3, Key::Num4];
             for (key, (_, size)) in presets.into_iter().zip(ICON_PRESETS) {
                 if i.consume_key(Modifiers::COMMAND | Modifiers::SHIFT, key) {
@@ -3372,7 +3372,7 @@ impl NinimmaUI {
         }
     }
 
-    /// Typing a name jumps to the first matching item, like Explorer.
+    /// Typing a name jumps to the first matching item.
     fn type_ahead_search(&mut self, typed: &str) {
         let (buffer, last) = &mut self.type_ahead;
         if last.elapsed() > Duration::from_millis(900) {
@@ -3404,7 +3404,7 @@ impl NinimmaUI {
     }
 
     /// Ctrl+mouse wheel (or trackpad pinch) resizes icons and walks through
-    /// Details → Tiles → Icons, exactly like Explorer.
+    /// Details → Tiles → Icons.
     fn apply_zoom(&mut self, zoom_delta: f32) {
         if zoom_delta != 1.0 {
             self.zoom_accumulator += zoom_delta.ln();
@@ -3501,7 +3501,7 @@ impl NinimmaUI {
                 });
             });
 
-        // Command bar: the Explorer "ribbon" essentials.
+        // Command bar: the essential file actions.
         egui::Frame::NONE
             .fill(pal().bg)
             .inner_margin(Margin::symmetric(10, 6))
@@ -3740,9 +3740,8 @@ impl NinimmaUI {
         width: f32,
         actions: &mut Vec<Action>,
     ) {
-        // Clicking the empty part of the bar switches to typing, like
-        // Explorer. It's registered before the folder names (at where the bar
-        // was last frame) so they sit on top of it: egui gives a click to the
+        // Clicking the empty part of the bar switches to typing. Register it before
+        // the folder names (where the bar was last frame) so they sit on top of it: egui gives a click to the
         // widget added last, and added after, it took every click on a
         // folder name.
         let bar_id = Id::unique("address_bar_bg");
@@ -4426,7 +4425,7 @@ impl NinimmaUI {
                 }
 
                 ui.add_space(20.0);
-                // A heading you can open, like Explorer's: all drives at once.
+                // A collapsible heading that opens all drives at once.
                 let this_pc = self.special == Some(Special::ThisPc);
                 let heading = ui
                     .add(
@@ -4927,7 +4926,7 @@ impl NinimmaUI {
             );
         }
         if self.cut_pending(&path) {
-            // Dim items that were cut, like Explorer.
+            // Dim items that were cut.
             painter.rect_filled(rect, CornerRadius::same(4), pal().bg.gamma_multiply(0.5));
         }
         if is_drop_target {
@@ -5023,7 +5022,7 @@ impl NinimmaUI {
         if response.drag_started_by(PointerButton::Primary)
             && !self.drag_out_active.load(Ordering::Relaxed)
         {
-            // Dragging an unselected item drags just that item, like Explorer.
+            // Dragging an unselected item drags just that item.
             if !selected {
                 self.selection.select_only(&path);
             }
@@ -5062,7 +5061,7 @@ impl NinimmaUI {
     /// Draw a thumbnail (or the file-type icon while it loads) fitted into `rect`.
     /// `fg` is the text colour of what's behind it (selection or not).
     fn paint_icon(&mut self, ui: &Ui, rect: Rect, item: &FileItem, fg: Color32) {
-        // Like Explorer, don't download cloud files just to draw thumbnails.
+        // Don't download cloud files just to draw thumbnails.
         let allowed =
             !item.online_only && (!self.folder_is_cloud || self.settings.cloud_thumbnails);
         let thumb = if allowed && ThumbnailCache::can_generate_thumbnail(&item.path) {
@@ -5894,7 +5893,7 @@ impl NinimmaUI {
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.add_space(10.0);
-                // Explorer's bottom-right view switches, plus a size slider.
+                // Bottom-right view switches, plus a size slider.
                 if ui
                     .selectable_label(
                         self.view.mode == ViewMode::Icons,
@@ -6241,7 +6240,7 @@ impl NinimmaUI {
                     if *first_frame {
                         *first_frame = false;
                         edit.request_focus();
-                        // Select the name without its extension, like Explorer.
+                        // Select the name without its extension.
                         let stem_len = if !targets[0].is_dir() {
                             text.rfind('.').filter(|&i| i > 0).map(|i| text[..i].chars().count())
                         } else {
@@ -6676,6 +6675,22 @@ impl NinimmaUI {
                                 .size(FONT_SIZE_SMALL),
                         );
                         ui.add_space(8.0);
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label("Photo place names:");
+                            ui.hyperlink_to("GeoNames", "https://www.geonames.org");
+                            ui.label("(unmodified data), licensed under");
+                            ui.hyperlink_to("CC BY 4.0", "https://creativecommons.org/licenses/by/4.0/");
+                        });
+                        ui.collapsing("Licenses, model downloads and third-party notices", |ui| {
+                            ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
+                                ui.label(include_str!("../NOTICE"));
+                                ui.separator();
+                                ui.label(include_str!("../LICENSE"));
+                                ui.separator();
+                                ui.label(include_str!("../packaging/icons/LICENSE-lucide"));
+                            });
+                        });
+                        ui.add_space(8.0);
                         if ui.button("Close").clicked() {
                             keep_open = false;
                         }
@@ -6850,8 +6865,7 @@ fn details_columns(width: f32) -> (f32, f32, f32, f32) {
     ((width - date - typ - size).max(160.0), date, typ, size)
 }
 
-/// Folders where most files are pictures open in Large icons by default,
-/// like Explorer's "Pictures" folder template.
+/// Folders where most files are pictures open in Large icons by default.
 fn looks_like_picture_folder(items: &[FileItem]) -> bool {
     let files: Vec<&FileItem> = items.iter().filter(|i| !i.is_dir).collect();
     let pictures = files
@@ -7243,7 +7257,7 @@ pub(crate) fn expand_home(typed: &str) -> PathBuf {
     }
 }
 
-/// Explorer's rule: dropping on the same drive moves, onto another drive
+/// Default drag-and-drop rule: dropping on the same drive moves, onto another drive
 /// copies. Ctrl forces a copy, Shift forces a move.
 fn drop_mode(src: &Path, dest: &Path, mods: Modifiers) -> PasteMode {
     if mods.command {
@@ -7423,7 +7437,7 @@ pub(crate) fn sort_items(items: &mut [FileItem], by: SortBy, ascending: bool) {
     });
 }
 
-/// "Logical" ordering as in Explorer: "file2" sorts before "file10".
+/// "Logical" ordering: "file2" sorts before "file10".
 pub fn natural_cmp(a: &str, b: &str) -> CmpOrdering {
     let (mut a, mut b) = (a.chars().peekable(), b.chars().peekable());
     loop {
@@ -7573,7 +7587,7 @@ mod tests {
     }
 
     #[test]
-    fn copy_progress_reads_like_explorer() {
+    fn copy_progress_shows_counts_and_bytes() {
         let gb = 1u64 << 30;
         let text = job_bytes_text(gb, Some(4 * gb), Duration::from_secs(10), false);
         assert!(text.contains(" of "), "{text}");

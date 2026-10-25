@@ -101,7 +101,7 @@ pub const DARK: Palette = Palette {
     track: Color32::from_rgb(70, 70, 70),
 };
 
-/// Explorer's light look: white list, light grey pane, blue selection.
+/// Light appearance: white list, light grey pane, blue selection.
 pub const LIGHT: Palette = Palette {
     dark: false,
     bg: Color32::from_rgb(255, 255, 255),

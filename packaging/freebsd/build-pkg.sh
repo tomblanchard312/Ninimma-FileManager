@@ -66,10 +66,9 @@ licenselogic: single
 licenses: [APACHE20]
 categories: [x11-fm]
 desc: <<EOD
-A fast file manager that brings the Windows Explorer features other file
-managers lack: real large thumbnails with Ctrl + mouse wheel icon sizing,
+A fast file manager with large thumbnails, Ctrl + mouse wheel icon sizing,
 lossless bulk image rotation, tabs, undo/redo, drag and drop, network
-shares and Explorer's keyboard shortcuts.
+shares and familiar keyboard shortcuts.
 EOD
 deps: {
 $deps}

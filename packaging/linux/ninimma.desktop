@@ -3,7 +3,7 @@
 Type=Application
 Name=Ninimma
 GenericName=File Manager
-Comment=Browse files with large thumbnails, bulk image rotation and Explorer-style shortcuts
+Comment=Browse files with large thumbnails, bulk image rotation and familiar keyboard shortcuts
 Exec=ninimma %F
 Icon=ninimma
 Terminal=false

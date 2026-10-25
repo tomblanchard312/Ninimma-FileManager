@@ -1,5 +1,5 @@
 // Ninimma modification: independent project branding and integration.
-//! "Set as desktop background", like Explorer's. Each desktop keeps its own
+//! Set the desktop background. Each desktop keeps its own
 //! setting: GNOME-family desktops through gsettings, KDE Plasma through
 //! plasma-apply-wallpaperimage, Xfce through xfconf-query, macOS through
 //! System Events, Windows through SystemParametersInfo. Tests only record

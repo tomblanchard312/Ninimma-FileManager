@@ -1,5 +1,5 @@
 // Ninimma modification: independent project branding and integration.
-//! Image rotation, in the style of Explorer's "Rotate left / Rotate right".
+//! Image rotation with lossless JPEG orientation updates.
 //!
 //! JPEGs are rotated losslessly by rewriting the EXIF Orientation tag, the same
 //! approach Windows uses: no pixels are re-encoded, so no quality is lost and

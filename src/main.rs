@@ -163,7 +163,7 @@ fn app_icon() -> egui::IconData {
 fn configure_style(ctx: &egui::Context) {
     fonts::install_icons(ctx);
     // Colours and size come from the chosen theme (`theme::apply`, each
-    // frame). Ctrl +/- and Ctrl+wheel resize icons, as in Explorer, rather than
+    // frame). Ctrl +/- and Ctrl+wheel resize icons, rather than
     // zooming the whole interface.
     ctx.options_mut(|o| o.zoom_with_keyboard = false);
 }

@@ -1,5 +1,5 @@
 // Ninimma modification: independent project branding and integration.
-//! Explorer-style multi-selection over the currently displayed item list.
+//! Multi-selection over the currently displayed item list.
 //!
 //! Selection is stored by path so it survives re-sorting and auto-refresh;
 //! `anchor` is where Shift+click/Shift+arrow ranges extend from and `focus`
@@ -103,7 +103,7 @@ impl Selection {
         }
     }
 
-    /// Right-clicking an unselected item selects just it, like Explorer;
+    /// Right-clicking an unselected item selects just it;
     /// right-clicking inside the selection keeps the selection.
     pub fn right_click(&mut self, path: &Path) {
         if !self.selected.contains(path) {
@@ -179,7 +179,7 @@ mod tests {
     }
 
     #[test]
-    fn click_ctrl_shift_behave_like_explorer() {
+    fn click_ctrl_shift_select_expected_items() {
         let it = items(10);
         let mut s = Selection::default();
         s.click(&it, 2, false, false);

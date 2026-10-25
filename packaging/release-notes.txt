@@ -1,4 +1,4 @@
-Ninimma 0.1.6 synchronizes shared file-management features with FileExplorer while retaining Ninimma's own branding and installers.
+Ninimma 0.1.6 improves file management, desktop integration and installer license notices.
 
 - Add “Open file location in new tab” to search results. The new tab opens the containing folder and selects the result.
 - Retain the working system clipboard shortcuts and opt-in default file manager controls from 0.1.5.

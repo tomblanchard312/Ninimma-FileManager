@@ -28,7 +28,7 @@ fn command(path: &Path) -> Command {
     }
     #[cfg(windows)]
     {
-        // Explorer's own Eject: flushes and powers the device down.
+        // The Windows shell's Eject: flushes and powers the device down.
         let drive = crate::powershell::literal(&path.to_string_lossy());
         let mut c = Command::new("powershell");
         c.args([

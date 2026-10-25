@@ -8,16 +8,15 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>Apache-2.0</project_license>
   <name>Ninimma</name>
-  <summary>Browse files with large thumbnails, tabs and Explorer shortcuts</summary>
+  <summary>Browse files with large thumbnails, tabs and keyboard shortcuts</summary>
   <developer id="io.github.tomblanchard312">
     <name>Tom Blanchard</name>
   </developer>
   <description>
     <p>
-      A fast file manager that brings the Windows Explorer features Linux file
-      managers lack: real large thumbnails with Ctrl + mouse wheel icon sizing,
+      A fast file manager with large thumbnails, Ctrl + mouse wheel icon sizing,
       lossless bulk image rotation, tabs, undo and redo, drag and drop, and
-      Explorer's keyboard shortcuts.
+      familiar keyboard shortcuts.
     </p>
     <ul>
       <li>Icons from 32 to 256 pixels, tiles and details views, remembered per folder</li>
@@ -41,7 +40,6 @@
     <keyword>folder</keyword>
     <keyword>files</keyword>
     <keyword>thumbnails</keyword>
-    <keyword>explorer</keyword>
   </keywords>
   <provides>
     <binary>ninimma</binary>
