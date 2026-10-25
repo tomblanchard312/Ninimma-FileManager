@@ -162,7 +162,11 @@ impl From<io::Error> for ModelError {
     }
 }
 
-/// Where models live: per user, local, not synced.
+/// Where models live: the one folder every app on the desktop shares (SharedAI's), per user,
+/// local, not synced. Linux and BSD: `$XDG_DATA_HOME/SharedAI/models` (`~/.local/share/...`);
+/// inside a Flatpak, where `$XDG_DATA_HOME` is the app's private folder, the host's
+/// `~/.local/share`. Windows: `%LOCALAPPDATA%\SharedAI\models`. Models from the app's old
+/// folder move there once (see [`move_legacy_models`]).
 pub fn models_dir() -> Option<PathBuf> {
     // Tests never see or change the user's installed models: with a real
     // OCR model installed, a test expecting none saw OCR start (and could
@@ -173,18 +177,79 @@ pub fn models_dir() -> Option<PathBuf> {
             std::env::temp_dir().join(format!("ninimma-test-models-{}", std::process::id())),
         );
     }
+    let (shared, legacy) = shared_and_legacy_dirs()?;
+    static MOVED: std::sync::Once = std::sync::Once::new();
+    MOVED.call_once(|| move_legacy_models(&legacy, &shared));
+    Some(shared)
+}
+
+/// The shared models folder and this app's former own folder.
+fn shared_and_legacy_dirs() -> Option<(PathBuf, PathBuf)> {
     let env = |n: &str| {
         std::env::var_os(n)
             .map(PathBuf::from)
             .filter(|p| p.is_absolute())
     };
     if cfg!(windows) {
-        Some(env("LOCALAPPDATA")?.join("Ninimma").join("Models"))
-    } else if cfg!(target_os = "macos") {
-        Some(env("HOME")?.join("Library/Application Support/Ninimma/Models"))
+        let local = env("LOCALAPPDATA")?;
+        return Some((
+            local.join("SharedAI").join("models"),
+            local.join(Path::new("Ninimma").join("Models")),
+        ));
+    }
+    let home = env("HOME")?;
+    let legacy = if cfg!(target_os = "macos") {
+        home.join("Library/Application Support/Ninimma/Models")
     } else {
-        let data = env("XDG_DATA_HOME").or_else(|| env("HOME").map(|h| h.join(".local/share")))?;
-        Some(data.join("ninimma").join("models"))
+        let data = env("XDG_DATA_HOME").unwrap_or_else(|| home.join(".local/share"));
+        data.join("ninimma/models")
+    };
+    let in_flatpak = Path::new("/.flatpak-info").exists();
+    let data = if in_flatpak {
+        home.join(".local/share")
+    } else {
+        env("XDG_DATA_HOME").unwrap_or_else(|| home.join(".local/share"))
+    };
+    Some((data.join("SharedAI").join("models"), legacy))
+}
+
+/// Move model files from the app's former folder into the shared one, so every app finds them
+/// in one place. A file the shared folder already has (same name and size) is a duplicate and
+/// is removed; one that differs is left where it is. Errors leave files in place.
+pub fn move_legacy_models(legacy: &Path, shared: &Path) {
+    let Ok(entries) = fs::read_dir(legacy) else {
+        return;
+    };
+    if fs::create_dir_all(shared).is_err() {
+        return;
+    }
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        if !name
+            .to_string_lossy()
+            .to_ascii_lowercase()
+            .ends_with(".gguf")
+        {
+            continue;
+        }
+        let (from, to) = (entry.path(), shared.join(&name));
+        let Ok(meta) = fs::metadata(&from) else {
+            continue;
+        };
+        if !meta.is_file() {
+            continue;
+        }
+        match fs::metadata(&to) {
+            Ok(existing) if existing.len() == meta.len() => {
+                let _ = fs::remove_file(&from);
+            }
+            Ok(_) => {}
+            Err(_) => {
+                if fs::rename(&from, &to).is_err() && fs::copy(&from, &to).is_ok() {
+                    let _ = fs::remove_file(&from);
+                }
+            }
+        }
     }
 }
 
@@ -422,5 +487,31 @@ mod tests {
         assert_eq!(EMBEDDING_MODEL.sha256.len(), 64);
         assert!(EMBEDDING_MODEL.url.starts_with("https://"));
         assert_eq!(EMBEDDING_MODEL.dimensions, 384);
+    }
+
+    #[test]
+    fn models_move_once_into_the_shared_folder() {
+        let base =
+            std::env::temp_dir().join(format!("ninimma-filemanager-legacy-{}", std::process::id()));
+        let (legacy, shared) = (base.join("old"), base.join("SharedAI").join("models"));
+        fs::create_dir_all(&legacy).unwrap();
+        fs::create_dir_all(&shared).unwrap();
+        fs::write(legacy.join("a.gguf"), b"aaa").unwrap();
+        fs::write(legacy.join("dup.gguf"), b"dd").unwrap();
+        fs::write(shared.join("dup.gguf"), b"dd").unwrap();
+        fs::write(legacy.join("differs.gguf"), b"new").unwrap();
+        fs::write(shared.join("differs.gguf"), b"older!").unwrap();
+        fs::write(legacy.join("notes.txt"), b"keep").unwrap();
+        move_legacy_models(&legacy, &shared);
+        assert_eq!(fs::read(shared.join("a.gguf")).unwrap(), b"aaa");
+        assert!(!legacy.join("a.gguf").exists(), "moved");
+        assert!(!legacy.join("dup.gguf").exists(), "duplicate removed");
+        assert!(
+            legacy.join("differs.gguf").exists(),
+            "a different file is left alone"
+        );
+        assert_eq!(fs::read(shared.join("differs.gguf")).unwrap(), b"older!");
+        assert!(legacy.join("notes.txt").exists(), "only models move");
+        let _ = fs::remove_dir_all(&base);
     }
 }
