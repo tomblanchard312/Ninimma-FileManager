@@ -1,5 +1,5 @@
 // Ninimma modification: independent project branding and integration.
-//! Undo / redo for file operations, like Explorer's Ctrl+Z / Ctrl+Y.
+//! Undo / redo for file operations (Ctrl+Z / Ctrl+Y).
 //!
 //! Every operation records a list of reversible [`Step`]s. Undoing a step
 //! performs its inverse and returns the step that redoes it, so redo is

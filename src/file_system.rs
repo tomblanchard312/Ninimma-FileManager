@@ -743,7 +743,7 @@ impl FileSystem {
 }
 
 /// Where "New Document" templates live: XDG's Templates folder on Linux,
-/// Explorer's Templates folder on Windows, ~/Templates elsewhere.
+/// The user's Templates folder on Windows, ~/Templates elsewhere.
 pub fn templates_dir() -> Option<PathBuf> {
     #[cfg(windows)]
     {

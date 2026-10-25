@@ -3,7 +3,7 @@
 name = "ninimma"
 version = "0.1.6"
 edition = "2021"
-description = "Fast file manager with large thumbnails, bulk image rotation, tabs and Windows-style keyboard shortcuts"
+description = "Fast file manager with large thumbnails, bulk image rotation, tabs and familiar keyboard shortcuts"
 license = "Apache-2.0"
 repository = "https://github.com/tomblanchard312/Ninimma-FileManager"
 authors = ["tomblanchard312 <tomblanchard3@gmail.com>"]
@@ -19,7 +19,7 @@ priority = "optional"
 extended-description = """\
 A cross-platform file manager with large thumbnails, Ctrl + mouse wheel icon \
 sizing, lossless bulk image rotation, tabs, undo/redo, drag and drop, and \
-familiar Windows-style keyboard shortcuts."""
+familiar keyboard shortcuts."""
 license-file = ["LICENSE", "0"]
 depends = "$auto, xdg-utils, libx11-6, libx11-xcb1, libxkbcommon0, libxkbcommon-x11-0, libxcursor1, libxi6, libxrender1, libegl1, libgl1"
 recommends = "libwayland-client0, libwayland-egl1"

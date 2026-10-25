@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
 /// What to do when a pasted or dropped item's name already exists in the
-/// destination (Explorer's "Replace or Skip Files" prompt).
+/// destination (the "Replace or Skip Files" prompt).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Conflict {
     /// Overwrite. Replaced files go to the trash; folders are merged.
@@ -20,7 +20,7 @@ pub enum Conflict {
 
 /// Names in `paths` that already exist in `dest_dir` and would need a
 /// decision. Copies into their own folder don't count: they're always
-/// "- Copy", as in Explorer.
+/// "- Copy".
 pub fn conflicts(paths: &[PathBuf], dest_dir: &Path) -> Vec<PathBuf> {
     paths
         .iter()
@@ -74,7 +74,7 @@ pub fn paste_into(
             })
         }
         Conflict::Replace if is_real_dir(src) && is_real_dir(&target) => {
-            // Folder onto folder: merge, like Explorer.
+            // Folder onto folder: merge.
             let entries = fs::read_dir(src)
                 .map_err(|e| format!("Couldn't read {}: {e}", display_name(src)))?;
             for entry in entries {
@@ -680,7 +680,7 @@ mod tests {
     }
 
     #[test]
-    fn paste_into_same_folder_makes_explorer_style_copies() {
+    fn paste_into_same_folder_makes_suffixed_copies() {
         let dir = tempfile::tempdir().unwrap();
         let f = dir.path().join("photo.jpg");
         fs::write(&f, b"x").unwrap();

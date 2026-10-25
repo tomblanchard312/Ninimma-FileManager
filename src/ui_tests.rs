@@ -112,7 +112,7 @@ fn ctrl_mouse_wheel_resizes_icons_and_walks_through_views() {
     ctrl_wheel(&mut h, -4.0); // wheel down = smaller
     assert!(h.state().ui.view.icon_size < bigger);
 
-    // Keep shrinking: icons -> tiles -> details, as in Explorer.
+    // Keep shrinking: icons -> tiles -> details.
     for _ in 0..12 {
         ctrl_wheel(&mut h, -3.0);
     }
@@ -153,7 +153,7 @@ fn plain_wheel_scrolls_instead_of_zooming() {
 }
 
 #[test]
-fn click_ctrl_click_and_shift_click_select_like_explorer() {
+fn click_ctrl_click_and_shift_click_select_items() {
     let dir = picture_folder();
     let mut h = harness(dir.path());
 
@@ -340,7 +340,7 @@ fn shift_arrows_extend_and_shrink_a_contiguous_range_in_every_view() {
 }
 
 #[test]
-fn copy_paste_duplicates_files_explorer_style() {
+fn copy_paste_creates_suffixed_duplicates() {
     let dir = picture_folder();
     let mut h = harness(dir.path());
     h.get_by_label("notes.txt").click();
@@ -389,7 +389,7 @@ fn files_copied_in_another_app_paste_here() {
     std::fs::write(&report, "pdf").unwrap();
     let mut h = harness(dir.path());
 
-    // Our own copy first, then Nemo/Explorer copies something else.
+    // Our own copy first, then another file manager copies something else.
     h.get_by_label("notes.txt").click();
     h.run_steps(2);
     h.event(Event::Copy);
@@ -439,7 +439,7 @@ fn new_folder_opens_rename_and_mouse_back_button_navigates() {
     });
     h.run_steps(3);
     assert_eq!(h.state().fs.get_current_path(), dir.path());
-    // Coming back selects the folder we were in, like Explorer.
+    // Coming back selects the folder we were in.
     assert!(h.state().ui.selection.contains(&sub));
 }
 
@@ -592,7 +592,7 @@ fn files_dropped_on_the_window_move_in_but_same_folder_drops_do_nothing() {
     std::fs::write(&incoming, "hi").unwrap();
     let mut h = harness(dir.path());
 
-    // Same drive: moves, as in Explorer.
+    // Same drive: moves.
     drop_files(&mut h, std::slice::from_ref(&incoming));
     assert!(dir.path().join("incoming.txt").exists());
     assert!(!incoming.exists());

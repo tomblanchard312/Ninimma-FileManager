@@ -2,9 +2,8 @@
 //! Network shares and cloud storage: discovering what's connected,
 //! connecting to `smb://`, `sftp://`… addresses, and disconnecting.
 //!
-//! Cloud services and network shares appear as ordinary folders (GVfs, rclone,
-//! kernel mounts, sync clients), the same way Explorer relies on OneDrive /
-//! Google Drive / mapped drives; this module finds them and labels them.
+//! Cloud services and network shares appear as ordinary folders through GVfs,
+//! rclone, kernel mounts or sync clients. This module discovers and labels them.
 
 use std::path::{Path, PathBuf};
 

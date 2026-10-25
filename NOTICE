@@ -1,13 +1,9 @@
 Ninimma
-Derived from File Explorer by tomblanchard312.
-The Ninimma derivation changes branding, packaging, release automation, and desktop integration.
-Modified files carry a Ninimma modification notice.
-
-Original project attribution (retained):
-
-File Explorer
 Copyright 2026 tomblanchard312
-https://github.com/tomblanchard312/fileexplorer
+https://github.com/tomblanchard312/Ninimma-FileManager
+
+Ninimma includes changes to branding, packaging, release automation, and desktop integration.
+Modified files carry a Ninimma modification notice.
 
 This product includes software developed by tomblanchard312.
 

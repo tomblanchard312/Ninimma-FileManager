@@ -1,7 +1,6 @@
 // Ninimma modification: independent project branding and integration.
-//! Compress to ZIP and Extract all, like Explorer's "Send to → Compressed
-//! (zipped) folder" and "Extract All". Nothing is ever overwritten: the new
-//! archive or folder gets a free name ("Photos (2).zip").
+//! Compress selected files to ZIP and extract archives into a new folder.
+//! Nothing is overwritten: the archive or folder gets a free name ("Photos (2).zip").
 
 use crate::file_ops::{display_name, unique_name};
 use std::fs;

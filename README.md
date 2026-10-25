@@ -70,7 +70,7 @@ ninimma --restore-default
 This selects the handler for `inode/directory`. Some desktops' keyboard shortcuts,
 desktop icons, and browser “Show in folder” actions use separate settings or an
 already-running FileManager1 service. This does not uninstall the original file
-manager, replace the desktop shell, or change Windows Explorer/Finder defaults.
+manager, replace the desktop shell, or change Windows or macOS folder defaults.
 
 ### Flatpak (experimental)
 
@@ -96,12 +96,12 @@ into providers automatically.
 ## Features
 
 ### Views and thumbnails
-- **Ctrl + mouse wheel resizes icons** smoothly from 32 px up to 256 px. Keep scrolling down to go to Tiles, then Details, just like Explorer. A trackpad pinch works too. Ctrl + `+`/`-` and the slider in the status bar do the same.
+- **Ctrl + mouse wheel resizes icons** smoothly from 32 px up to 256 px. Keep scrolling down to go to Tiles, then Details. A trackpad pinch works too. Ctrl + `+`/`-` and the slider in the status bar do the same.
 - **View presets** Extra large / Large / Medium / Small icons, Tiles, Details (`Ctrl+Shift+1…6`)
 - **Per-folder views**: each folder remembers its own view, icon size and sort order. Folders that are mostly pictures open in large icons automatically.
 - **Thumbnails** for photos (JPEG, PNG, GIF, BMP, WebP, TIFF, AVIF, …), videos (via ffmpeg), PDFs and HEIC. **EXIF orientation is respected**, so phone photos aren't shown sideways.
 - Thumbnails load in the background, on-screen items first, and are cached on disk.
-- **Natural sorting** like Explorer: `IMG_2` comes before `IMG_10`
+- **Natural sorting**: `IMG_2` comes before `IMG_10`
 - **Auto-refresh** when files change on disk
 - **Themes** (View → Theme): light, dark, high contrast dark and light, or following the system's light/dark setting (the default). **Interface size** (View → Interface Size) scales the whole window from 80% to 200%. Both switch at once and are remembered. Native Windows accent colors/system icons and GNOME/KDE widget/icon themes are not yet integrated. Icons are [Lucide](https://lucide.dev)'s (ISC), drawn in the theme's colours.
 
@@ -118,13 +118,13 @@ into providers automatically.
   - Files are written atomically, so a crash or full disk can never leave a half-written photo.
 
 ### File management
-- Cut / Copy / Paste (`Ctrl+X/C/V`). Copies into the same folder become `photo - Copy.jpg`. When names clash elsewhere you choose **Replace**, **Skip** or **Keep both**, as in Explorer. Replaced files go to the trash, and folders merge.
+- Cut / Copy / Paste (`Ctrl+X/C/V`). Copies into the same folder become `photo - Copy.jpg`. When names clash elsewhere you choose **Replace**, **Skip** or **Keep both**. Replaced files go to the trash, and folders merge.
 - **Undo / Redo** (`Ctrl+Z` / `Ctrl+Y`) for rename, move, copy, delete-to-trash, new folder and rotate. Undoing a delete restores the item from the trash.
 - Paste files copied in Nautilus, Nemo, Dolphin or a terminal (paths or `file://` URIs on the clipboard)
 - **Delete moves to Trash / Recycle Bin**. `Shift+Delete` deletes permanently after confirmation.
 - Rename (`F2`). The name is pre-selected without its extension. With several items selected, they are numbered: `Holiday (1).jpg`, `Holiday (2).jpg`, …
 - New folder (`Ctrl+Shift+N`), Copy as path (`Ctrl+Shift+C`)
-- **Drag and drop** to and from other apps (Nemo, Nautilus, browsers, the desktop) and between folders. As in Explorer, dropping on the same drive moves and onto another drive copies; Ctrl forces a copy and Shift forces a move. Linux X11, Windows and macOS are supported; Wayland isn't yet.
+- **Drag and drop** to and from other apps (Nemo, Nautilus, browsers, the desktop) and between folders. Dropping on the same drive moves and onto another drive copies; Ctrl forces a copy and Shift forces a move. Linux X11, Windows and macOS are supported; Wayland isn't yet.
 - Long-running operations run in the background with progress in the status bar
 
 ### Menus, new documents and bookmarks
@@ -239,7 +239,7 @@ File shortcuts are ignored while you're typing in the address or search box, so 
   Those operations require separate disposable-system validation; a successful
   build does not establish safe handling of every encrypted disk format.
 - Ninimma uses its own settings, thumbnail cache, model directory and index-key
-  service. Existing FileExplorer settings and encrypted indexes are not migrated.
+  service. Settings and encrypted indexes from other file managers are not imported.
 
 ## Build and release
 
@@ -280,10 +280,7 @@ These checks complement testing; they are not a guarantee that a release is safe
 
 ## License and attribution
 
-Copyright 2026 tomblanchard312. Ninimma is derived from
-[FileExplorer](https://github.com/tomblanchard312/fileexplorer), with independent
-branding, desktop integration and release packaging. This repository starts with
-a fresh source snapshot; the original Git history is not imported.
+Copyright 2026 tomblanchard312.
 
 Licensed under [Apache-2.0](LICENSE). Keep [NOTICE](NOTICE), the licence, and required
 third-party attributions with redistributed copies. The embedded interface icons
