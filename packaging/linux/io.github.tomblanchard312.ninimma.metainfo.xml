@@ -62,6 +62,10 @@
     <control>touch</control>
   </supports>
   <releases>
+    <release version="0.1.7" date="2026-10-25">
+      <url type="details">https://github.com/tomblanchard312/Ninimma-FileManager/releases/tag/v0.1.7</url>
+      <description><p>Refresh Ninimma wording, expose model and data attribution, and harden image decoding, archive extraction and key memory handling.</p></description>
+    </release>
     <release version="0.1.6" date="2026-10-23">
       <url type="details">https://github.com/tomblanchard312/Ninimma-FileManager/releases/tag/v0.1.6</url>
       <description><p>Open search result locations in a new tab and complete third-party license distribution.</p></description>

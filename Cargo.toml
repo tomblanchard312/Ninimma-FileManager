@@ -1,7 +1,7 @@
 # Ninimma modification: independent project packaging and branding.
 [package]
 name = "ninimma"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 description = "Fast file manager with large thumbnails, bulk image rotation, tabs and familiar keyboard shortcuts"
 license = "Apache-2.0"
