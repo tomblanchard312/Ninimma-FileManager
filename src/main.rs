@@ -30,6 +30,7 @@ mod ocr;
 #[cfg(all(unix, not(target_os = "macos")))]
 mod open_with;
 mod pictures;
+mod powershell;
 mod preview;
 mod properties;
 mod recent;

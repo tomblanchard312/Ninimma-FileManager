@@ -32,7 +32,7 @@ const MAX_PREVIEWS: usize = 8;
 const MAX_QUEUE: usize = 400;
 /// Disk cache entries unused for this long are pruned at startup.
 const DISK_CACHE_MAX_AGE: Duration = Duration::from_secs(60 * 60 * 24 * 90);
-const SOURCE_SIZE_LIMIT: u64 = 200_000_000;
+const SOURCE_SIZE_LIMIT: u64 = crate::image_ops::MAX_SOURCE_BYTES;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum ThumbSize {
@@ -547,10 +547,9 @@ pub(crate) fn decode_oriented(path: &Path) -> Option<DynamicImage> {
     }
     let mut reader = ImageReader::open(path).ok()?.with_guessed_format().ok()?;
     // Refuse decompression bombs rather than allocating gigabytes.
-    let mut limits = image::Limits::default();
-    limits.max_alloc = Some(1024 * 1024 * 1024);
-    reader.limits(limits);
+    reader.limits(crate::image_ops::decode_limits());
     let mut decoder = reader.into_decoder().ok()?;
+    crate::image_ops::limit_decoder(&mut decoder).ok()?;
     let orientation = decoder
         .orientation()
         .unwrap_or(image::metadata::Orientation::NoTransforms);
@@ -785,8 +784,8 @@ fn generate_heic_thumbnail(path: &Path, cache_path: &Path, max_size: u32) -> Opt
         let ps_script = format!(
             r#"
 Add-Type -AssemblyName System.Drawing
-$inputPath = '{}'
-$outputPath = '{}'
+$inputPath = {}
+$outputPath = {}
 $maxSize = {}
 
 try {{
@@ -820,8 +819,8 @@ public class HeicConverter {{
     Write-Output "FAILED: $_"
 }}
 "#,
-            path.to_string_lossy().replace('\'', "''"),
-            cache_path.to_string_lossy().replace('\'', "''"),
+            crate::powershell::literal(&path.to_string_lossy()),
+            crate::powershell::literal(&cache_path.to_string_lossy()),
             max_size
         );
         let mut cmd = hidden_command("powershell");
@@ -846,15 +845,74 @@ public class HeicConverter {{
     generate_with_imagemagick(path, cache_path, max_size)
 }
 
+fn imagemagick_programs(windows: bool) -> &'static [&'static str] {
+    // Windows' system convert.exe converts filesystems, not images.
+    if windows {
+        &["magick"]
+    } else {
+        &["magick", "convert"]
+    }
+}
+
+fn imagemagick_command(
+    program: &str,
+    path: &Path,
+    cache_path: &Path,
+    max_size: u32,
+) -> Option<Command> {
+    let format = match path.extension()?.to_str()?.to_ascii_lowercase().as_str() {
+        "heic" | "heif" => "heic:",
+        "pdf" => "pdf:",
+        _ => return None,
+    };
+    // Force the intended reader; a renamed SVG/PS/MVG must not select a delegate.
+    let mut input = std::ffi::OsString::from(format);
+    input.push(path.canonicalize().ok()?);
+    input.push("[0]");
+    let mut output = std::ffi::OsString::from("png:");
+    output.push(std::path::absolute(cache_path).ok()?);
+    let mut cmd = hidden_command(program);
+    cmd.args([
+        "-limit", "memory", "128MiB", "-limit", "map", "256MiB", "-limit", "disk", "256MiB",
+        "-limit", "time", "10", "-limit", "thread", "1",
+    ])
+    .arg(input)
+    .args([
+        "-auto-orient",
+        "-thumbnail",
+        &format!("{max_size}x{max_size}"),
+    ]);
+    if format == "pdf:" {
+        cmd.args(["-background", "white", "-flatten"]);
+    }
+    cmd.arg(output);
+    Some(cmd)
+}
+
+fn succeeds_within(mut cmd: Command, limit: Duration) -> bool {
+    let Ok(mut child) = cmd.spawn() else {
+        return false;
+    };
+    let deadline = std::time::Instant::now() + limit;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return status.success(),
+            Ok(None) if std::time::Instant::now() < deadline => {
+                thread::sleep(Duration::from_millis(20));
+            }
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return false;
+            }
+        }
+    }
+}
+
 fn generate_with_imagemagick(path: &Path, cache_path: &Path, max_size: u32) -> Option<ColorImage> {
-    let resize = format!("{max_size}x{max_size}");
-    // ImageMagick 7 is `magick`; distributions still shipping 6 only have `convert`.
-    for program in ["magick", "convert"] {
-        let mut cmd = hidden_command(program);
-        cmd.arg(path)
-            .args(["-auto-orient", "-thumbnail", &resize])
-            .arg(cache_path);
-        if cmd.status().is_ok_and(|s| s.success()) && cache_path.exists() {
+    for program in imagemagick_programs(cfg!(windows)) {
+        let cmd = imagemagick_command(program, path, cache_path, max_size)?;
+        if succeeds_within(cmd, Duration::from_secs(15)) && cache_path.exists() {
             return load_scaled(cache_path, max_size);
         }
     }
@@ -905,28 +963,76 @@ fn generate_pdf_thumbnail(path: &Path, cache_path: &Path, max_size: u32) -> Opti
         return load_scaled(cache_path, max_size);
     }
 
-    // ImageMagick (needs Ghostscript)
-    for program in ["magick", "convert"] {
-        let mut cmd = hidden_command(program);
-        cmd.args([
-            &format!("{input}[0]"),
-            "-thumbnail",
-            &format!("{max_size}x{max_size}"),
-            "-background",
-            "white",
-            "-flatten",
-            &output,
-        ]);
-        if cmd.status().is_ok_and(|s| s.success()) && cache_path.exists() {
-            return load_scaled(cache_path, max_size);
-        }
-    }
-    None
+    // The explicit PDF reader may use Ghostscript; never infer another format.
+    generate_with_imagemagick(path, cache_path, max_size)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn imagemagick_forces_only_expected_readers_and_bounded_resources() {
+        let dir = tempfile::tempdir().unwrap();
+        for (name, contents, prefix) in [
+            ("renamed.heic", "%!PS-Adobe-3.0", "heic:"),
+            (
+                "-renamed.HEIF",
+                "<svg xmlns='http://www.w3.org/2000/svg'/>",
+                "heic:",
+            ),
+            ("drawing.heic", "push graphic-context", "heic:"),
+            ("page.pdf", "%PDF-1.7", "pdf:"),
+        ] {
+            let source = dir.path().join(name);
+            fs::write(&source, contents).unwrap();
+            let output = dir.path().join("thumbnail.png");
+            let command = imagemagick_command("magick", &source, &output, 256).unwrap();
+            let args: Vec<_> = command.get_args().map(|a| a.to_os_string()).collect();
+            let mut expected = std::ffi::OsString::from(prefix);
+            expected.push(source.canonicalize().unwrap());
+            expected.push("[0]");
+            let input = args.iter().position(|arg| arg == &expected).unwrap();
+            assert_eq!(input, 15, "limits must precede reading the input");
+            assert_eq!(
+                args[..input],
+                [
+                    "-limit", "memory", "128MiB", "-limit", "map", "256MiB", "-limit", "disk",
+                    "256MiB", "-limit", "time", "10", "-limit", "thread", "1"
+                ]
+                .map(std::ffi::OsString::from)
+            );
+            assert!(args.last().unwrap().to_string_lossy().starts_with("png:"));
+            assert_eq!(args.iter().any(|a| a == "-flatten"), prefix == "pdf:");
+        }
+        for ext in ["svg", "mvg", "ps", "png", "jpg"] {
+            let path = dir.path().join(format!("unneeded.{ext}"));
+            fs::write(&path, b"fixture").unwrap();
+            assert!(
+                imagemagick_command("magick", &path, &dir.path().join("out.png"), 256).is_none()
+            );
+        }
+    }
+
+    #[test]
+    fn windows_never_uses_the_filesystem_convert_tool() {
+        assert_eq!(imagemagick_programs(true), &["magick"]);
+        assert_eq!(imagemagick_programs(false), &["magick", "convert"]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn image_converter_deadline_kills_and_reaps_the_process() {
+        let mut slow = hidden_command("sleep");
+        slow.arg("1");
+        assert!(!succeeds_within(slow, Duration::from_millis(20)));
+        let mut success = hidden_command("sh");
+        success.args(["-c", "exit 0"]);
+        assert!(succeeds_within(success, Duration::from_secs(5)));
+        let mut failure = hidden_command("sh");
+        failure.args(["-c", "exit 1"]);
+        assert!(!succeeds_within(failure, Duration::from_secs(5)));
+    }
 
     #[test]
     fn cache_key_changes_when_file_is_modified() {

@@ -2533,6 +2533,68 @@ fn windows_shift_delete_still_requires_confirmation_in_file_view() {
 }
 
 #[test]
+fn oversized_archive_requires_confirmation_and_cancel_writes_nothing() {
+    let folder = tempfile::tempdir().unwrap();
+    let one = folder.path().join("one.txt");
+    let two = folder.path().join("two.txt");
+    std::fs::write(&one, b"one").unwrap();
+    std::fs::write(&two, b"two").unwrap();
+    let zip = folder.path().join("large.zip");
+    crate::archive::compress(&[one, two], &zip).unwrap();
+    let mut data = std::fs::read(&zip).unwrap();
+    let positions: Vec<_> = data
+        .windows(4)
+        .enumerate()
+        .filter_map(|(i, b)| (b == b"PK\x01\x02").then_some(i))
+        .collect();
+    assert_eq!(positions.len(), 2);
+    for i in positions {
+        data[i + 24..i + 28].copy_from_slice(&(3 * 1024 * 1024 * 1024u32).to_le_bytes());
+    }
+    std::fs::write(&zip, data).unwrap();
+    let mut h = harness(folder.path());
+    let ctx = h.ctx.clone();
+    let app = h.state_mut();
+    app.ui.apply(Action::Extract(zip), &ctx, &mut app.fs);
+    h.run_steps(3);
+    h.get_by_label("Extract a large archive?");
+    assert!(!folder.path().join("large").exists());
+    h.get_by_label("Cancel").click();
+    h.run_steps(3);
+    assert!(h.state().ui.dialog.is_none());
+    assert!(!folder.path().join("large").exists());
+}
+
+#[test]
+fn approved_archive_extraction_keeps_a_finite_output_budget() {
+    let folder = tempfile::tempdir().unwrap();
+    let source = folder.path().join("source.txt");
+    std::fs::write(&source, b"ten bytes!").unwrap();
+    let zip = folder.path().join("approved.zip");
+    crate::archive::compress(&[source], &zip).unwrap();
+    let mut h = harness(folder.path());
+    h.state_mut().ui.dialog = Some(Dialog::ConfirmLargeArchive {
+        archive: zip,
+        bytes: 10,
+    });
+    h.run_steps(3);
+    h.get_by_label("Extract larger archive").click();
+    let output = folder.path().join("approved/source.txt");
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        h.run_steps(3);
+        if std::fs::read(&output).ok().as_deref() == Some(b"ten bytes!") {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "approved extraction never completed"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+#[test]
 fn about_displays_geonames_and_bundled_model_notices() {
     let folder = tempfile::tempdir().unwrap();
     let mut h = harness(folder.path());
