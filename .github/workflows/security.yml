@@ -24,20 +24,31 @@ jobs:
     name: Security Audit
     runs-on: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'ninimma-linux' || 'ubuntu-latest' }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # Keep required check names present for documentation-only PRs.
+      - name: Classify changed files
+        id: changes
+        run: |
+          python3 -m unittest discover -s .github/scripts -p 'test_docs_only.py'
+          python3 .github/scripts/docs_only.py
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        if: steps.changes.outputs.docs_only != 'true'
+        uses: dtolnay/rust-toolchain@stable
 
       # A prebuilt binary, rather than compiling it on every run.
-      - name: Install dependency policy tools
-        uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2
+      - name: Install cargo-audit
+        if: steps.changes.outputs.docs_only != 'true'
+        uses: taiki-e/install-action@v2
         with:
           tool: |
             cargo-audit
             cargo-deny@0.20.2
 
       - name: Run security audit
+        if: steps.changes.outputs.docs_only != 'true'
         run: cargo audit
 
       - name: Enforce dependency licenses and trusted sources

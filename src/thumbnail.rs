@@ -784,8 +784,8 @@ fn generate_heic_thumbnail(path: &Path, cache_path: &Path, max_size: u32) -> Opt
         let ps_script = format!(
             r#"
 Add-Type -AssemblyName System.Drawing
-$inputPath = '{}'
-$outputPath = '{}'
+$inputPath = {}
+$outputPath = {}
 $maxSize = {}
 
 try {{
@@ -819,8 +819,8 @@ public class HeicConverter {{
     Write-Output "FAILED: $_"
 }}
 "#,
-            path.to_string_lossy().replace('\'', "''"),
-            cache_path.to_string_lossy().replace('\'', "''"),
+            crate::powershell::literal(&path.to_string_lossy()),
+            crate::powershell::literal(&cache_path.to_string_lossy()),
             max_size
         );
         let mut cmd = hidden_command("powershell");
