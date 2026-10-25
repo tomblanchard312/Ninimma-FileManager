@@ -23,15 +23,26 @@ jobs:
     runs-on: ${{ vars.NINIMMA_LOCAL_RUNNER == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'ninimma-linux' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # Keep required check names present for documentation-only PRs.
+      - name: Classify changed files
+        id: changes
+        run: |
+          python3 -m unittest discover -s .github/scripts -p 'test_docs_only.py'
+          python3 .github/scripts/docs_only.py
 
       - name: Install Rust toolchain
+        if: steps.changes.outputs.docs_only != 'true'
         uses: dtolnay/rust-toolchain@stable
 
       # A prebuilt binary, rather than compiling it on every run.
       - name: Install cargo-audit
+        if: steps.changes.outputs.docs_only != 'true'
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-audit
 
       - name: Run security audit
+        if: steps.changes.outputs.docs_only != 'true'
         run: cargo audit
