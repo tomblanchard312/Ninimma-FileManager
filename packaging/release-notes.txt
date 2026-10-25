@@ -1,9 +1,12 @@
-Ninimma 0.1.6 improves file management, desktop integration and installer license notices.
+Ninimma 0.1.7 refreshes the installed app's wording and attribution, and includes the latest file-processing security fixes.
 
-- Add “Open file location in new tab” to search results. The new tab opens the containing folder and selects the result.
-- Retain the working system clipboard shortcuts and opt-in default file manager controls from 0.1.5.
-- Complete Lucide/Feather license distribution in the legacy Windows ZIP builder, with tests for ZIP contents and per-user notice installation.
+- Present Ninimma independently in app and package descriptions, desktop/store metadata, documentation and notices.
+- Add visible GeoNames/CC BY 4.0 attribution and expandable project, model and third-party notices in About.
+- Complete CLIP model attribution and verify installed Windows license/notice files.
+- Bound image decoding and rotation memory, limit archive output with confirmation for larger extractions, and isolate locked secret pages.
+- Harden Windows PowerShell filename quoting and automatic ImageMagick thumbnail decoding.
+- Use caller-owned FreeBSD mount snapshots and preserve keyboard clipboard and default-folder integration features.
 
-The Ninimma Flatpak is attached to this release once its build, installation smoke test, checksums and GitHub artifact attestations have been verified. Restart Ninimma after updating.
+The Ninimma Flatpak is attached after its build, installation smoke test, checksums and GitHub artifact attestations are verified. Restart Ninimma after updating.
 
-Native packages and checksum files are verified with GitHub artifact attestations. Windows and macOS installers are unsigned; attestations provide build provenance, not OS code signing.
+Native installers and checksum files include GitHub artifact attestations. Windows and macOS installers remain unsigned; attestations establish build provenance rather than OS code signing.
