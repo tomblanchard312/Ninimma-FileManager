@@ -7,6 +7,8 @@ on:
     paths:
       - '**/Cargo.toml'
       - '**/Cargo.lock'
+      - 'deny.toml'
+      - '.github/workflows/security.yml'
   pull_request:
   schedule:
     # Run every Monday at 9am UTC
@@ -41,8 +43,13 @@ jobs:
         if: steps.changes.outputs.docs_only != 'true'
         uses: taiki-e/install-action@v2
         with:
-          tool: cargo-audit
+          tool: |
+            cargo-audit
+            cargo-deny@0.20.2
 
       - name: Run security audit
         if: steps.changes.outputs.docs_only != 'true'
         run: cargo audit
+
+      - name: Enforce dependency licenses and trusted sources
+        run: cargo deny --locked check licenses sources

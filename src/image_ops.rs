@@ -9,8 +9,23 @@
 use image::metadata::Orientation;
 use image::{DynamicImage, ImageDecoder, ImageFormat, ImageReader};
 use std::fs;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::Path;
+
+pub(crate) const MAX_SOURCE_BYTES: u64 = 200_000_000;
+
+pub(crate) fn decode_limits() -> image::Limits {
+    let mut limits = image::Limits::default();
+    limits.max_alloc = Some(256 * 1024 * 1024);
+    limits
+}
+
+pub(crate) fn limit_decoder(decoder: &mut impl ImageDecoder) -> image::ImageResult<()> {
+    // from_decoder bypasses ImageReader::decode's output-buffer budget check.
+    let mut limits = decode_limits();
+    limits.reserve(decoder.total_bytes())?;
+    decoder.set_limits(limits)
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Rotation {
@@ -344,15 +359,23 @@ fn insert_minimal_exif(data: &[u8], orientation: u16) -> Vec<u8> {
 // ---------------------------------------------------------------------------
 
 fn rotate_pixels(path: &Path, rotation: Rotation) -> Result<(), String> {
-    let original = fs::read(path).map_err(|e| format!("Couldn't read file: {e}"))?;
+    let mut original = Vec::new();
+    fs::File::open(path)
+        .and_then(|f| f.take(MAX_SOURCE_BYTES + 1).read_to_end(&mut original))
+        .map_err(|e| format!("Couldn't read file: {e}"))?;
+    if original.len() as u64 > MAX_SOURCE_BYTES {
+        return Err("Image source exceeds the 200 MB rotation limit".into());
+    }
     refuse_multi_frame(&original)?;
-    let reader = ImageReader::new(std::io::Cursor::new(&original))
+    let mut reader = ImageReader::new(std::io::Cursor::new(&original))
         .with_guessed_format()
         .map_err(|e| format!("Couldn't open image: {e}"))?;
+    reader.limits(decode_limits());
     let format = reader.format().ok_or("Unknown image format")?;
     let mut decoder = reader
         .into_decoder()
         .map_err(|e| format!("Couldn't decode image: {e}"))?;
+    limit_decoder(&mut decoder).map_err(|e| format!("Couldn't decode image: {e}"))?;
     let existing = decoder.orientation().unwrap_or(Orientation::NoTransforms);
     let icc = decoder.icc_profile().ok().flatten();
     let mut img =
@@ -481,6 +504,22 @@ fn write_atomically(path: &Path, data: &[u8]) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn oversized_decoded_image_is_refused_without_replacing_the_source() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("large.bmp");
+        DynamicImage::new_rgb8(1, 1).save(&file).unwrap();
+        let mut bytes = fs::read(&file).unwrap();
+        bytes[18..22].copy_from_slice(&20_000i32.to_le_bytes());
+        bytes[22..26].copy_from_slice(&20_000i32.to_le_bytes());
+        fs::write(&file, &bytes).unwrap();
+        let error = rotate_file(&file, Rotation::Clockwise).unwrap_err();
+        assert!(error.to_lowercase().contains("limit"), "{error}");
+        assert!(crate::thumbnail::decode_oriented(&file).is_none());
+        assert_eq!(fs::read(&file).unwrap(), bytes);
+    }
+
     use image::{GenericImageView, Rgb, RgbImage};
 
     /// A 3x2 image with every pixel distinct, so any wrong transform is visible.
