@@ -1,7 +1,7 @@
 # Ninimma modification: independent project packaging and branding.
 [package]
 name = "ninimma"
-version = "0.1.7"
+version = "0.1.8"
 edition = "2021"
 description = "Fast file manager with large thumbnails, bulk image rotation, tabs and familiar keyboard shortcuts"
 license = "Apache-2.0"
@@ -122,7 +122,7 @@ raw-window-handle = "0.6"   # Window handle for starting OS drag-and-drop
 # Search index (opt-in). SQLCipher only: never plain SQLite, so an index can't
 # be written unencrypted. Its crypto comes from CommonCrypto on macOS, the
 # system libcrypto on Linux/FreeBSD, and a vendored OpenSSL on Windows.
-rusqlite = { version = "0.40", features = ["bundled-sqlcipher", "hooks"] }
+rusqlite = { version = "0.40", features = ["bundled-sqlcipher", "hooks", "functions"] }
 keyring-core = "1"          # OS credential store for the index key
 argon2 = "0.6"              # Passphrase fallback: key derivation
 chacha20poly1305 = "0.11"   # Passphrase fallback: wraps the index key
@@ -165,7 +165,7 @@ drag = "2.1"
 # the fallback).
 eframe = { version = "0.37", default-features = false, features = ["wgpu"] }
 windows-native-keyring-store = "1"   # Windows Credential Manager (DPAPI)
-rusqlite = { version = "0.40", features = ["bundled-sqlcipher-vendored-openssl"] }
+rusqlite = { version = "0.40", features = ["bundled-sqlcipher-vendored-openssl", "functions"] }
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Memory", "Win32_System_SystemInformation", "Win32_Storage_FileSystem", "Win32_System_Power", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]

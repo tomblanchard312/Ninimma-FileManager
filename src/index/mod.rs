@@ -456,21 +456,13 @@ impl Worker {
 
     /// Gives each photo (and each video, from a few frames) its point for
     /// searching what it shows, a batch at a time, at background pace.
-    /// Returns true if it stopped early.
-    fn look_at_pictures(&mut self) -> bool {
+    /// `max_batches` stops after that many batches so text meaning can take
+    /// a turn; the model stays loaded. Returns true if it stopped early.
+    fn look_at_pictures(&mut self, max_batches: Option<usize>) -> bool {
         let Some(key) = self.key.clone() else {
             return false;
         };
         let videos = crate::thumbnail::can_read_videos();
-        if self
-            .conn
-            .as_ref()
-            .and_then(|c| db::picture_candidate_count(c, videos).ok())
-            .unwrap_or(0)
-            == 0
-        {
-            return false;
-        }
         if self.vectors.is_none() {
             match vectors::SqliteVectors::open(&self.shared.dir, &key, false) {
                 Ok(v) => self.vectors = Some(v),
@@ -486,17 +478,28 @@ impl Worker {
         let (Some(conn), Some(mut vecs)) = (self.conn.take(), self.vectors.take()) else {
             return false;
         };
-        // Points from another model can't be compared: start over.
+        // Points from another model can't be compared: start over. A
+        // catalog that says photos are done, while this database has no
+        // picture points, is looked at again too.
         let model = crate::models::PICTURE_MODEL.id;
         if vecs.picture_model().ok().flatten().as_deref() != Some(model) {
             let _ = vecs.reset_pictures(model);
             let _ = db::reset_pictures(&conn);
+        } else if vecs.picture_count().unwrap_or(0) == 0 {
+            let _ = db::requeue_done_pictures(&conn);
+        }
+        if db::picture_candidate_count(&conn, videos).unwrap_or(0) == 0 {
+            self.conn = Some(conn);
+            self.vectors = Some(vecs);
+            return false;
         }
         let pictures = &self.shared.pictures;
         pictures.set_threads(self.settings.worker_threads);
         let work = self.shared.dir.join("video-frames");
         let limit = self.settings.max_semantic_mb as u64 * 1024 * 1024;
         let mut stopped = false;
+        let mut paused = false;
+        let mut batches = 0usize;
         let mut problem = None;
         {
             let control = Control::new(self, Phase::Pictures);
@@ -509,7 +512,15 @@ impl Worker {
                 if batch.is_empty() || vecs.size_on_disk() >= limit {
                     break;
                 }
-                if !control.keep_going() || !self.changes.is_empty() || self.database_full() {
+                if max_batches.is_some_and(|n| batches >= n) {
+                    stopped = true;
+                    paused = true;
+                    break;
+                }
+                // The metadata file being near its size cap must not skip
+                // this. Picture points are stored in the semantic index,
+                // which has its own cap, checked above.
+                if !control.keep_going() || !self.changes.is_empty() {
                     stopped = true;
                     break;
                 }
@@ -553,17 +564,28 @@ impl Worker {
                     break;
                 }
                 let ids: Vec<i64> = done.iter().map(|(id, _)| *id).collect();
-                let _ = db::set_picture_state(&conn, &ids, 1);
-                let _ = db::set_picture_state(&conn, &unreadable, 2);
+                if db::set_picture_state(&conn, &ids, 1).is_err()
+                    || db::set_picture_state(&conn, &unreadable, 2).is_err()
+                {
+                    problem = Some(
+                        "Picture results couldn't be saved because the index is full.".to_string(),
+                    );
+                    break;
+                }
                 control.progress(db::picture_candidate_count(&conn, videos).unwrap_or(0));
+                batches += 1;
                 std::thread::sleep(READ_PACE);
             }
         }
-        let _ = std::fs::remove_dir_all(&work);
-        if let Ok(live) = db::picture_file_ids(&conn) {
-            let _ = vecs.retain_pictures(&live);
+        // A pause keeps the model loaded for the next batches. Unloading
+        // here would read the 578 MB file again on every turn.
+        if !paused {
+            let _ = std::fs::remove_dir_all(&work);
+            if let Ok(live) = db::picture_file_ids(&conn) {
+                let _ = vecs.retain_pictures(&live);
+            }
+            self.shared.pictures.unload();
         }
-        self.shared.pictures.unload();
         self.pictures_failed = problem.is_some();
         self.status.picture_problem = problem;
         self.status.pictures = vecs.picture_count().unwrap_or(0);
@@ -599,20 +621,13 @@ impl Worker {
     }
 
     /// Makes vectors for document chunks that don't have one yet, a few at
-    /// a time, at background pace. Returns true if it stopped early.
-    fn make_vectors(&mut self) -> bool {
+    /// a time, at background pace. `max_batches` stops after that many
+    /// batches so picture search can take a turn; the model stays loaded.
+    /// Returns true if it stopped early.
+    fn make_vectors(&mut self, max_batches: Option<usize>) -> bool {
         let Some(key) = self.key.clone() else {
             return false;
         };
-        if self
-            .conn
-            .as_ref()
-            .and_then(|c| db::chunks_to_embed_count(c).ok())
-            .unwrap_or(0)
-            == 0
-        {
-            return false;
-        }
         if self.vectors.is_none() {
             match vectors::SqliteVectors::open(&self.shared.dir, &key, false) {
                 Ok(v) => self.vectors = Some(v),
@@ -632,13 +647,24 @@ impl Worker {
             return false;
         };
         let mut vecs = vecs;
-        // Vectors from another model can't be compared: start over.
+        // Vectors from another model can't be compared: start over. Chunks
+        // marked done while this database has no points (the meaning index
+        // was removed) are embedded again.
         if vecs.model().ok().flatten() != Some((spec.id.to_string(), spec.dimensions)) {
             let _ = vecs.reset(spec.id, spec.dimensions);
             let _ = db::reset_embedded(&conn);
+        } else if vecs.count().unwrap_or(0) == 0 {
+            let _ = db::reset_embedded(&conn);
+        }
+        if db::chunks_to_embed_count(&conn).unwrap_or(0) == 0 {
+            self.conn = Some(conn);
+            self.vectors = Some(vecs);
+            return false;
         }
         let limit = self.settings.max_semantic_mb as u64 * 1024 * 1024;
         let mut stopped = false;
+        let mut paused = false;
+        let mut batches = 0usize;
         let mut problem = None;
         {
             let control = Control::new(self, Phase::Vectors);
@@ -656,6 +682,11 @@ impl Worker {
                 // otherwise the worker would retry it at once, forever, and
                 // never get to OCR.
                 if vecs.size_on_disk() >= limit {
+                    break;
+                }
+                if max_batches.is_some_and(|n| batches >= n) {
+                    stopped = true;
+                    paused = true;
                     break;
                 }
                 if !control.keep_going()
@@ -690,13 +721,16 @@ impl Worker {
                 if control.last_sent.get().elapsed() > Duration::from_millis(500) {
                     control.send_state(IndexState::Embedding { left });
                 }
+                batches += 1;
                 std::thread::sleep(READ_PACE);
             }
         }
-        if let Ok(live) = db::live_file_ids(&conn) {
-            let _ = vecs.retain_files(&live);
+        if !paused {
+            if let Ok(live) = db::live_file_ids(&conn) {
+                let _ = vecs.retain_files(&live);
+            }
+            embedder.unload();
         }
-        embedder.unload();
         self.embed_failed = problem.is_some();
         self.status.smart_problem = problem;
         if !stopped && vecs.size_on_disk() >= limit {
@@ -1060,25 +1094,44 @@ impl Worker {
         self.set_state(IndexState::Ready);
         loop {
             self.check_watching();
-            if self.scan_due && !self.stopping() {
-                self.scan_due = false;
-                self.scan_all();
+            if let Ok(command) = self.commands.try_recv() {
+                if let Next::Exit = self.handle(command) {
+                    return;
+                }
+                continue;
             }
             if !self.changes.is_empty() && !self.stopping() {
                 self.apply_changes();
                 continue;
             }
-            // Vectors come before OCR, so documents are searchable by
-            // meaning without waiting for slow OCR (20-35 s a page); a
-            // second vector pass takes in the text OCR read.
-            // Recent images and scans come first (a receipt just saved);
-            // the long passes below make way when more arrive.
+            // Picture points and text meaning take turns. Running either
+            // one to the end first left the other search with nothing:
+            // "picture of a cat" needs picture points, "railway receipt"
+            // needs text meaning. A few batches of each, then the other.
+            let pictures_left =
+                self.looks_at_pictures() && !self.stopping() && self.look_at_pictures(Some(2));
+            let meaning_left =
+                self.makes_vectors() && !self.stopping() && self.make_vectors(Some(8));
+            if pictures_left || meaning_left {
+                continue;
+            }
+            if self.scan_due && !self.stopping() {
+                // The scan holds the database until every root is walked.
+                // It waits until the pictures and text already in the
+                // catalog have their points.
+                self.scan_due = false;
+                self.scan_all();
+                continue;
+            }
+            // Text vectors still come before OCR, so documents are
+            // searchable by meaning without waiting for slow OCR (20-35 s
+            // a page); a second vector pass takes in the text OCR read.
             let stopped_early = (self.reads_images() && !self.stopping() && self.read_images(true))
                 || (self.reads_contents() && !self.stopping() && self.read_contents())
-                || (self.makes_vectors() && !self.stopping() && self.make_vectors())
-                || (self.looks_at_pictures() && !self.stopping() && self.look_at_pictures())
+                || (self.looks_at_pictures() && !self.stopping() && self.look_at_pictures(None))
+                || (self.makes_vectors() && !self.stopping() && self.make_vectors(None))
                 || (self.reads_images() && !self.stopping() && self.read_images(false))
-                || (self.makes_vectors() && !self.stopping() && self.make_vectors());
+                || (self.makes_vectors() && !self.stopping() && self.make_vectors(None));
             if stopped_early {
                 // Handle changes or a command, then go on.
                 if let Ok(command) = self.commands.try_recv() {

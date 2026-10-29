@@ -32,7 +32,7 @@ Section "Ninimma"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Ninimma" "DisplayName" "Ninimma"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Ninimma" "UninstallString" '$\"$INSTDIR\Uninstall.exe$\"'
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Ninimma" "DisplayIcon" "$INSTDIR\ninimma.ico"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Ninimma" "DisplayVersion" "0.1.7"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Ninimma" "DisplayVersion" "0.1.8"
 SectionEnd
 Section "Uninstall"
   SetShellVarContext current
