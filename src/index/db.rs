@@ -630,8 +630,11 @@ fn picture_filter(videos: bool) -> String {
         .chain(if videos { VIDEO_EXTENSIONS } else { &[] })
         .map(|e| format!("'{e}'"))
         .collect();
+    // Text extraction is not required. What a picture shows does not depend
+    // on whether its text has been read, and waiting for that left picture
+    // search with nothing to compare while a large text backlog ran.
     format!(
-        "f.picture_state = 0 AND f.extraction_state != 0 AND f.is_dir = 0 AND f.extension IN ({})",
+        "f.picture_state = 0 AND f.is_dir = 0 AND f.extension IN ({})",
         exts.join(",")
     )
 }
@@ -684,6 +687,16 @@ pub fn set_picture_state(conn: &Connection, ids: &[i64], state: i64) -> Result<(
 /// Every picture is looked at again (a new picture model, or a rebuild).
 pub fn reset_pictures(conn: &Connection) -> Result<(), DbError> {
     conn.execute("UPDATE files SET picture_state = 0", [])?;
+    Ok(())
+}
+
+/// Photos marked done whose picture points are gone (the semantic index
+/// was removed or never finished). Unreadable files stay unreadable.
+pub fn requeue_done_pictures(conn: &Connection) -> Result<(), DbError> {
+    conn.execute(
+        "UPDATE files SET picture_state = 0 WHERE picture_state = 1",
+        [],
+    )?;
     Ok(())
 }
 
@@ -1208,5 +1221,31 @@ pub(crate) mod tests {
             .query_row("SELECT native_path FROM files", [], |r| r.get(0))
             .unwrap();
         assert_eq!(native_to_path(&stored), path);
+    }
+
+    #[test]
+    fn a_photo_is_a_picture_candidate_before_its_text_is_read() {
+        let dir = tempfile::tempdir().unwrap();
+        let key = SecretBytes::random(KEY_LEN).unwrap();
+        let mut conn = open_test_db(dir.path(), &key);
+        let root = root_id(&conn, Path::new("/home/a")).unwrap();
+        let generation = begin_scan(&conn, root).unwrap();
+        upsert_files(
+            &mut conn,
+            root,
+            generation,
+            &[
+                record("/home/a/IMG_0001.jpg", 10),
+                record("/home/a/notes.txt", 11),
+            ],
+        )
+        .unwrap();
+        let waiting = picture_candidates(&conn, false, 10).unwrap();
+        let names: Vec<_> = waiting
+            .iter()
+            .map(|p| p.path.file_name().unwrap().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, vec!["IMG_0001.jpg".to_string()]);
+        assert_eq!(picture_candidate_count(&conn, false).unwrap(), 1);
     }
 }

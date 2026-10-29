@@ -15,16 +15,20 @@
 //! was modified.
 //!
 //! Ranking: names containing every word come first (exact name, then
-//! names starting with the first word, then the rest). With full text on,
-//! they're followed by files whose text, folder or photo place match, best
-//! first (SQLite FTS5 bm25), so a file matching more of the words ranks
-//! higher.
+//! names starting with the first word, then the rest). A word matches a
+//! name when it is its own word there ("cat" matches "my-cat.jpg" and
+//! "cats.png", not the letters inside "duplicate" or "notifications").
+//! With full text on, name matches are followed by files whose text, folder
+//! or photo place match, best first (SQLite FTS5 bm25), so a file matching
+//! more of the words ranks higher. Picture matches (what a photo shows)
+//! are included the same way.
 
 use super::db::{descendant_range, native_to_path};
 use super::places;
 use super::types::{MatchReason, SearchHit, SearchRequest, SearchResults, SearchScope};
 use crate::file_system::FileItem;
 use chrono::{Datelike, Local, NaiveDate, TimeZone};
+use rusqlite::functions::FunctionFlags;
 use rusqlite::types::Value;
 use rusqlite::Connection;
 use std::path::PathBuf;
@@ -1063,6 +1067,61 @@ fn picture_similarity(score: f32) -> f32 {
     MEANING_FLOOR + 0.05 + 2.5 * (score - crate::pictures::MATCH_FLOOR)
 }
 
+/// Where that match sits against filenames. A search for a picture or a
+/// video ("picture of a cat") puts what the image shows above every file
+/// that only has the words in its name.
+fn picture_rank(score: f32, kind: Option<Kind>) -> f32 {
+    let similarity = picture_similarity(score);
+    if matches!(kind, Some(Kind::Image | Kind::Video)) {
+        4.0 + similarity
+    } else {
+        similarity
+    }
+}
+
+/// Whether `word` is its own word in `name` (already folded). "cat" matches
+/// "my-cat.jpg" and "cats.png". It does not match "duplicate", "longcat" or
+/// "notifications", where those letters sit inside a longer word.
+pub(crate) fn name_has_word(name: &str, word: &str) -> bool {
+    if word.is_empty() {
+        return false;
+    }
+    let word: Vec<char> = word.chars().collect();
+    let chars: Vec<char> = name.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        if !chars[i].is_alphanumeric() {
+            i += 1;
+            continue;
+        }
+        let start = i;
+        while i < chars.len() && chars[i].is_alphanumeric() {
+            i += 1;
+        }
+        let token = &chars[start..i];
+        if token.starts_with(&word) {
+            let rest = &token[word.len()..];
+            if rest.is_empty() || rest == ['s'] {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn install_name_match(conn: &Connection) -> rusqlite::Result<()> {
+    conn.create_scalar_function(
+        "name_has_word",
+        2,
+        FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
+        |ctx| {
+            let name: String = ctx.get(0)?;
+            let word: String = ctx.get(1)?;
+            Ok(name_has_word(&name, &word))
+        },
+    )
+}
+
 /// Runs a search. `meaning` holds smart-search hits (file id, the chunk's
 /// text hash, similarity), best first; empty without smart search.
 /// `pictures` holds photos and videos showing what was searched for (file
@@ -1077,6 +1136,7 @@ pub fn run(
     pictures: &[(i64, f32)],
     cancelled: &dyn Fn() -> bool,
 ) -> rusqlite::Result<(SearchResults, Vec<PathBuf>)> {
+    install_name_match(conn)?;
     let wanted = request.offset + request.limit + 1;
     let first = query.words.first().cloned().unwrap_or_default();
 
@@ -1089,7 +1149,7 @@ pub fn run(
     let mut sql = String::from("SELECT f.native_path, f.filename_folded FROM files f WHERE 1");
     for w in &query.words {
         sql.push_str(&format!(
-            " AND instr(f.filename_folded, {}) > 0",
+            " AND name_has_word(f.filename_folded, {})",
             bind(Value::Text(w.clone()))
         ));
     }
@@ -1284,7 +1344,7 @@ pub fn run(
             }
             for (file_id, score) in pictures {
                 if let Some(native) = allowed.get(file_id) {
-                    let similarity = picture_similarity(*score);
+                    let similarity = picture_rank(*score, query.kind);
                     match similar.iter_mut().find(|s| s.0 == *native) {
                         Some(s) if s.1 >= similarity => {}
                         Some(s) => *s = (native.clone(), similarity, MatchReason::Picture),
@@ -1802,6 +1862,48 @@ mod tests {
     }
 
     #[test]
+    fn a_picture_of_a_cat_does_not_need_that_name() {
+        let (_d, root, conn) = indexed(&["cats.png", "IMG_0001.jpg", "holiday.jpg"]);
+        let id = |name: &str| -> i64 {
+            conn.query_row("SELECT id FROM files WHERE filename = ?1", [name], |r| {
+                r.get(0)
+            })
+            .unwrap()
+        };
+        // The cat is IMG_0001.jpg. cats.png only has the word in its name.
+        let pictures = vec![(id("IMG_0001.jpg"), 0.08)];
+        let request = SearchRequest {
+            generation: 1,
+            text: "picture of a cat".into(),
+            scope: SearchScope::Everywhere,
+            folder: root.path().to_path_buf(),
+            offset: 0,
+            limit: PAGE_SIZE,
+            full_text: true,
+            smart: true,
+            understand: false,
+        };
+        let (results, _) = run(
+            &conn,
+            &request,
+            &parse("picture of a cat").unwrap(),
+            &[],
+            &pictures,
+            &|| false,
+        )
+        .unwrap();
+        let hits: Vec<(String, MatchReason)> = results
+            .hits
+            .into_iter()
+            .map(|h| (h.item.name, h.reason))
+            .collect();
+        assert_eq!(hits[0].0, "IMG_0001.jpg");
+        assert_eq!(hits[0].1, MatchReason::Picture);
+        assert_eq!(hits.last().map(|(n, _)| n.as_str()), Some("cats.png"));
+        assert!(!hits.iter().any(|(n, _)| n == "holiday.jpg"));
+    }
+
+    #[test]
     fn a_type_search_never_shows_another_type_whatever_found_it() {
         let (_d, root, conn) = indexed(&["IMG_0001.jpg", "clip.mp4", "process.rs", "notes.txt"]);
         let id = |name: &str| -> i64 {
@@ -2073,6 +2175,38 @@ mod tests {
         };
         assert_eq!(names(&["acme"]), ["notes.txt", "draft.txt"]);
         assert_eq!(names(&["contract"]), ["draft.txt", "notes.txt"]);
+    }
+
+    #[test]
+    fn a_word_inside_another_word_is_not_a_name() {
+        assert!(name_has_word("my-cat.jpg", "cat"));
+        assert!(name_has_word("cats.png", "cat"));
+        assert!(name_has_word("cat.png", "cat"));
+        assert!(!name_has_word("duplicate.svg", "cat"));
+        assert!(!name_has_word("replicate.svg", "cat"));
+        assert!(!name_has_word("18-notifications.png", "cat"));
+        assert!(!name_has_word("image_longcat_image_edit-1.webp", "cat"));
+        assert!(!name_has_word("video-001.progressive.truncated.png", "cat"));
+        assert!(!name_has_word("catwalk walk forward crossed.webp", "cat"));
+
+        let (_d, root, conn) = indexed(&[
+            "duplicate.svg",
+            "replicate.svg",
+            "18-notifications.png",
+            "image_longcat_image_edit-1.webp",
+            "video-001.progressive.truncated.png",
+            "Catwalk Walk Forward Crossed.webp",
+            "cats.png",
+            "holiday/my-cat.jpg",
+        ]);
+        let found = search(
+            &conn,
+            root.path(),
+            "picture of a cat",
+            SearchScope::Everywhere,
+            "",
+        );
+        assert_eq!(found, ["cats.png", "my-cat.jpg"]);
     }
 
     #[test]

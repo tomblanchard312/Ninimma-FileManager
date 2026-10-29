@@ -642,6 +642,8 @@ pub struct NinimmaUI {
     view: ViewSettings,
     search_text: String,
     selection: Selection,
+    pub(crate) picker_mode: bool,
+    pub(crate) picker_activation: Option<PathBuf>,
     thumbnails: ThumbnailCache,
     fonts: FallbackFonts,
     list: ListCache,
@@ -752,6 +754,8 @@ impl NinimmaUI {
             settings,
             search_text: String::new(),
             selection: Selection::default(),
+            picker_mode: false,
+            picker_activation: None,
             thumbnails,
             fonts: FallbackFonts::default(),
             list: ListCache {
@@ -893,7 +897,9 @@ impl NinimmaUI {
         self.follow_tree(ui.ctx(), fs);
         let mut actions = Vec::new();
         #[cfg(all(unix, not(target_os = "macos")))]
-        self.answer_file_manager1(ui.ctx(), &mut actions);
+        if !self.picker_mode {
+            self.answer_file_manager1(ui.ctx(), &mut actions);
+        }
         let typing_at_start = ctx.egui_wants_keyboard_input() || self.dialog.is_some();
 
         egui::Panel::top("menu_bar")
@@ -1958,7 +1964,6 @@ impl NinimmaUI {
                 .cloned()
                 .collect()
         } else if from_index {
-            // Index results keep their ranking (best matches first).
             self.index.results.items.clone()
         } else {
             fs.get_items()
@@ -1967,7 +1972,9 @@ impl NinimmaUI {
                 .cloned()
                 .collect()
         };
-        if !(from_index || recent) {
+        // Search results use the same Sort control as a folder. Recent
+        // stays newest-first.
+        if !recent {
             sort_items(&mut items, self.view.sort_by, self.view.sort_ascending);
         }
         self.list.paths = items.iter().map(|i| i.path.clone()).collect();
@@ -2110,7 +2117,7 @@ impl NinimmaUI {
         });
     }
 
-    fn selected_paths(&self) -> Vec<PathBuf> {
+    pub(crate) fn selected_paths(&self) -> Vec<PathBuf> {
         self.selection.ordered(&self.list.paths)
     }
 
@@ -2630,14 +2637,20 @@ impl NinimmaUI {
                     self.special = None;
                     fs.set_path(path);
                 } else {
-                    self.remember_recent(&path);
-                    self.open_external(&path);
+                    if self.picker_mode {
+                        self.picker_activation = Some(path);
+                    } else {
+                        self.remember_recent(&path);
+                        self.open_external(&path);
+                    }
                 }
             }
             Action::OpenSelected => {
                 let sel = self.selected_paths();
                 if let [only] = sel.as_slice() {
                     self.apply(Action::OpenItem(only.clone()), ctx, fs);
+                } else if self.picker_mode {
+                    self.picker_activation = sel.into_iter().find(|p| p.is_file());
                 } else {
                     for p in sel.into_iter().filter(|p| !p.is_dir()) {
                         self.remember_recent(&p);

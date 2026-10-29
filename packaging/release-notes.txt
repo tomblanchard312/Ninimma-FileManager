@@ -1,11 +1,10 @@
-Ninimma 0.1.7 refreshes the installed app's wording and attribution, and includes the latest file-processing security fixes.
+Ninimma 0.1.8 searches pictures by what they show, matches filename words exactly, and sorts those results.
 
-- Present Ninimma independently in app and package descriptions, desktop/store metadata, documentation and notices.
-- Add visible GeoNames/CC BY 4.0 attribution and expandable project, model and third-party notices in About.
-- Complete CLIP model attribution and verify installed Windows license/notice files.
-- Bound image decoding and rotation memory, limit archive output with confirmation for larger extractions, and isolate locked secret pages.
-- Harden Windows PowerShell filename quoting and automatic ImageMagick thumbnail decoding.
-- Use caller-owned FreeBSD mount snapshots and preserve keyboard clipboard and default-folder integration features.
+- Picture search runs while the text index is still catching up, and a photo does not wait until its text has been read.
+- Photos and text are queued again when their saved vectors are missing.
+- A search word matches a whole filename word, including a simple plural, so it no longer matches a longer word that only contains those letters.
+- A picture query ranks photos by what they show above files that only match the name.
+- Search results follow the Sort control: name, date modified, type, and size, including the column headers.
 
 The Ninimma Flatpak is attached after its build, installation smoke test, checksums and GitHub artifact attestations are verified. Restart Ninimma after updating.
 

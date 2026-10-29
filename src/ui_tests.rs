@@ -1260,6 +1260,35 @@ fn searching_subfolders_and_indexed_locations_uses_the_index() {
 }
 
 #[test]
+fn search_results_follow_the_chosen_sort() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("zebra.txt"), vec![0u8; 1]).unwrap();
+    std::fs::write(dir.path().join("apple.txt"), vec![0u8; 10]).unwrap();
+    std::fs::write(dir.path().join("mango.txt"), vec![0u8; 100]).unwrap();
+    let mut h = harness(dir.path());
+    let app = h.state_mut();
+    let folder = app.fs.get_current_path().to_path_buf();
+    let items = ["zebra.txt", "apple.txt", "mango.txt"]
+        .map(|name| FileItem::new(folder.join(name)).unwrap());
+    app.ui.settings.search_scope = SearchScope::Everywhere;
+    app.ui.search_text = "txt".into();
+    app.ui.index.results.query = Some(("txt".into(), SearchScope::Everywhere, folder));
+    app.ui.index.results.items = items.into();
+    app.ui.view.sort_by = SortBy::Size;
+    app.ui.view.sort_ascending = false;
+    let App { ui, fs, .. } = app;
+    ui.refresh_list(fs);
+    let names: Vec<_> = ui.list.items.iter().map(|i| i.name.as_str()).collect();
+    assert_eq!(names, ["mango.txt", "apple.txt", "zebra.txt"]);
+
+    ui.view.sort_by = SortBy::Name;
+    ui.view.sort_ascending = true;
+    ui.refresh_list(fs);
+    let names: Vec<_> = ui.list.items.iter().map(|i| i.name.as_str()).collect();
+    assert_eq!(names, ["apple.txt", "mango.txt", "zebra.txt"]);
+}
+
+#[test]
 fn index_scopes_explain_how_to_turn_indexing_on() {
     let dir = picture_folder();
     let mut h = harness(dir.path());
@@ -2606,4 +2635,25 @@ fn about_displays_geonames_and_bundled_model_notices() {
         .click();
     h.run_steps(3);
     h.get_by_label_contains("Picture search downloads OpenAI CLIP ViT-B/32");
+}
+
+#[test]
+fn picker_file_activation_returns_selection_without_external_launch() {
+    let dir = picture_folder();
+    let mut h = harness(dir.path());
+    h.state_mut().ui.picker_mode = true;
+    let ctx = egui::Context::default();
+    let file = dir.path().join("notes.txt");
+    let state = h.state_mut();
+    state
+        .ui
+        .apply(Action::OpenItem(file.clone()), &ctx, &mut state.fs);
+    assert_eq!(state.ui.picker_activation.take(), Some(file));
+    let folder = dir.path().join("folder");
+    std::fs::create_dir(&folder).unwrap();
+    state
+        .ui
+        .apply(Action::OpenItem(folder.clone()), &ctx, &mut state.fs);
+    assert_eq!(state.fs.get_current_path(), folder);
+    assert!(state.ui.picker_activation.is_none());
 }
