@@ -20,6 +20,8 @@ sdk-extensions:
   - org.freedesktop.Sdk.Extension.llvm21
 command: ninimma
 finish-args:
+  - --socket=pulseaudio
+  - --filesystem=xdg-run/sharedai
   - --share=ipc
   - --socket=fallback-x11
   - --socket=wayland

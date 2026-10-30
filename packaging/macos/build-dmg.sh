@@ -20,6 +20,8 @@ cat > "$app/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
+<key>NSMicrophoneUsageDescription</key>
+<string>Record audio only when you choose Dictate or Voice command for local speech recognition.</string>
 <key>CFBundleName</key><string>Ninimma</string>
 <key>CFBundleDisplayName</key><string>Ninimma</string>
 <key>CFBundleIdentifier</key><string>io.github.tomblanchard312.ninimma</string>

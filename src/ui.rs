@@ -635,6 +635,7 @@ impl TabState {
 }
 
 pub struct NinimmaUI {
+    speech: enki_speech_ui::SpeechTools,
     /// One slot per tab, in order; the active tab's slot is `None`.
     tabs: Vec<Option<TabState>>,
     active_tab: usize,
@@ -746,6 +747,7 @@ impl NinimmaUI {
 
     fn with_thumbnails(settings: Settings, fs: &FileSystem, thumbnails: ThumbnailCache) -> Self {
         let mut ui = Self {
+            speech: enki_speech_ui::SpeechTools::new("ninimma"),
             tabs: vec![None],
             active_tab: 0,
             view: settings.default_view,
@@ -997,6 +999,28 @@ impl NinimmaUI {
             names_key,
             self.list.items.iter().map(|i| i.name.as_str()),
         );
+        let scope = format!("{}:{}", self.active_tab, fs.get_current_path().display());
+        if let Some(action) = self.speech.show(&ctx, &scope, "Use as search text") {
+            use enki_speech_ui::{Action as SpeechAction, VoiceCommand};
+            match action {
+                SpeechAction::Insert(text) => self.search_text = text,
+                SpeechAction::Command(command) => match command {
+                    VoiceCommand::Previous => self.apply(Action::Back, &ctx, fs),
+                    VoiceCommand::Next => self.apply(Action::Forward, &ctx, fs),
+                    VoiceCommand::OpenAssistant => self.speech.open = true,
+                    VoiceCommand::Stop => self.speech.open = false,
+                    VoiceCommand::ZoomIn => {
+                        self.settings.ui_scale = (self.settings.ui_scale + 0.1).min(2.0)
+                    }
+                    VoiceCommand::ZoomOut => {
+                        self.settings.ui_scale = (self.settings.ui_scale - 0.1).max(0.75)
+                    }
+                    VoiceCommand::Undo | VoiceCommand::Redo => self
+                        .speech
+                        .notice("Use the file action controls to review changes."),
+                },
+            }
+        }
     }
 
     // ------------------------------------------------------------------
@@ -3455,6 +3479,7 @@ impl NinimmaUI {
             .inner_margin(Margin::symmetric(10, 8))
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
+                    self.speech.button(ui, "Voice");
                     ui.set_height(BUTTON_MIN_SIZE);
                     ui.spacing_mut().item_spacing.x = 4.0;
 

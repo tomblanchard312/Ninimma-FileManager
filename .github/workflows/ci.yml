@@ -54,7 +54,7 @@ jobs:
           key: ci-v1-ubuntu2204-linux-${{ steps.compiler.outputs.hash }}-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml', 'build.rs', '.github/workflows/ci.yml', '.cargo/**', 'vendor/**', 'packaging/ci/**', 'packaging/llama/**') }}
           restore-keys: ci-v1-ubuntu2204-linux-${{ steps.compiler.outputs.hash }}-
 
-      - run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config cmake clang libclang-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libwayland-dev
+      - run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config cmake clang libclang-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libasound2-dev libxkbcommon-dev libwayland-dev
         if: steps.changes.outputs.docs_only != 'true'
       - name: Locate compiler builtin headers
         if: steps.changes.outputs.docs_only != 'true'

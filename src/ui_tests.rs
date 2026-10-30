@@ -2607,3 +2607,16 @@ fn about_displays_geonames_and_bundled_model_notices() {
     h.run_steps(3);
     h.get_by_label_contains("Picture search downloads OpenAI CLIP ViT-B/32");
 }
+
+#[test]
+fn voice_controls_open_and_reopen_without_recording() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut h = harness(dir.path());
+    for _ in 0..2 {
+        h.get_by_label("Voice").click();
+        h.run_steps(2);
+        h.get_by_label("Dictate");
+        h.get_by_label("Voice").click();
+        h.run_steps(2);
+    }
+}
