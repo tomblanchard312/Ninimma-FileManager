@@ -192,4 +192,4 @@ candle-core = { path = "vendor/candle-core" }
 
 [dependencies.enki-speech-ui]
 git = "https://github.com/tomblanchard312/Qanloom.git"
-rev = "23597b193c24a43273dc86812fa87dbb8f129fe5"
+rev = "719d09989e86593ed84c6129d829df6a2e8ab1d0"
