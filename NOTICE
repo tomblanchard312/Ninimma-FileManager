@@ -233,3 +233,41 @@ agreement.
 5.4. "Results" means any outcome obtained by computational analysis
 of Data, including for example machine learning models and models'
 insights.
+
+
+Enki companion runtime (applies only when its binaries are distributed):
+
+Enki Runtime Binary Distribution License
+Copyright (c) 2026 tomblanchard312
+
+Permission is granted, worldwide, perpetually, non-exclusively and royalty-free,
+to use, copy and redistribute official compiled Enki daemon and inference-worker
+binaries supplied by tomblanchard312, including their accompanying installation
+and launch helpers, as part of, or as a companion runtime for, applications
+maintained or distributed by tomblanchard312. This permission includes commercial
+and non-commercial distribution, downstream redistribution of those applications,
+and installation as a shared runtime used by multiple such applications.
+
+Redistributions must retain this license and all accompanying copyright,
+third-party license and attribution notices. Distributors may repackage, sign
+and install the supplied runtime, and adapt accompanying launch/install helpers,
+but may not change the functionality of the compiled first-party binaries under
+this grant. This license does not require publication of application source code.
+
+This is a binary distribution grant, not a source-code license. No permission is
+granted to publish or redistribute the private Enki daemon or worker implementation
+source code. Ownership remains with its respective copyright holders. All rights
+not expressly granted are reserved.
+
+The MIT licenses of sharedai-client, sharedai-protocol and enki-speech-ui remain
+unchanged. Third-party software and model files remain governed by their own
+licenses; this grant neither replaces nor limits those licenses. Model weights
+are not included in this grant. Enki branding remains subject to the separate
+branding license; this grant conveys no additional trademark rights.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
