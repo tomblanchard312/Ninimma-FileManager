@@ -167,7 +167,7 @@ jobs:
           copyback: false
           envs: GITHUB_REF_NAME
           prepare: |
-            pkg install -y curl cmake llvm libX11 libxkbcommon libXcursor libXi libXrender mesa-libs xorg-vfbserver mesa-dri
+            pkg install -y curl cmake llvm alsa-lib libX11 libxkbcommon libXcursor libXi libXrender mesa-libs xorg-vfbserver mesa-dri
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
           run: |
             . "$HOME/.cargo/env"

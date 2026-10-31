@@ -310,3 +310,5 @@ Run the workflow from that packaging tag, attaching to the native release:
 ```sh
 gh workflow run flatpak.yml --ref flatpak-v0.1.7 -f tag=v0.1.7
 ```
+
+Voice accessibility preview: see [dictation, transcription, translation and safe voice controls](docs/VOICE.md).

@@ -42,7 +42,7 @@ put "$root/packaging/icons/LICENSE-lucide" share/licenses/ninimma/LICENSE-lucide
 # The window-system libraries are loaded at runtime, so declare them as
 # dependencies, using the versions installed on the build machine.
 deps=""
-for name in libX11 libxkbcommon libXcursor libXi libXrender mesa-libs; do
+for name in alsa-lib libX11 libxkbcommon libXcursor libXi libXrender mesa-libs; do
     if line=$(pkg query '%n|%o|%v' "$name" 2>/dev/null) && [ -n "$line" ]; then
         n=${line%%|*}; rest=${line#*|}; o=${rest%%|*}; v=${rest#*|}
         deps="$deps    \"$n\": { origin: \"$o\", version: \"$v\" },

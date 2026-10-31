@@ -21,7 +21,7 @@ A cross-platform file manager with large thumbnails, Ctrl + mouse wheel icon \
 sizing, lossless bulk image rotation, tabs, undo/redo, drag and drop, and \
 familiar keyboard shortcuts."""
 license-file = ["LICENSE", "0"]
-depends = "$auto, xdg-utils, libx11-6, libx11-xcb1, libxkbcommon0, libxkbcommon-x11-0, libxcursor1, libxi6, libxrender1, libegl1, libgl1"
+depends = "$auto, libasound2 | libasound2t64, xdg-utils, libx11-6, libx11-xcb1, libxkbcommon0, libxkbcommon-x11-0, libxcursor1, libxi6, libxrender1, libegl1, libgl1"
 recommends = "libwayland-client0, libwayland-egl1"
 suggests = "ffmpeg, poppler-utils, imagemagick"
 assets = [
@@ -69,6 +69,7 @@ post_uninstall_script = "gtk-update-icon-cache -q -t /usr/share/icons/hicolor 2>
 # Library sonames rather than package names, so one RPM works on Fedora,
 # RHEL and openSUSE alike.
 [package.metadata.generate-rpm.requires]
+"libasound.so.2()(64bit)" = "*"
 xdg-utils = "*"
 "libX11.so.6()(64bit)" = "*"
 "libX11-xcb.so.1()(64bit)" = "*"
@@ -188,3 +189,7 @@ strip = true
 # shortcut: upstream Candle 0.11 pins vulnerable ZIP 8; remove when a release supports ZIP 9.
 [patch.crates-io]
 candle-core = { path = "vendor/candle-core" }
+
+[dependencies.enki-speech-ui]
+git = "https://github.com/tomblanchard312/Qanloom.git"
+rev = "719d09989e86593ed84c6129d829df6a2e8ab1d0"

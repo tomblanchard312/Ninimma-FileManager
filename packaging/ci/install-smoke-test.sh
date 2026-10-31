@@ -58,7 +58,7 @@ deb() {
 set -eu
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq /pkg/$(basename "$file") xvfb xauth libgl1-mesa-dri >/dev/null
+apt-get install -y -qq /pkg/$(basename "$file") libasound2 xvfb xauth libgl1-mesa-dri >/dev/null
 useradd -m tester
 su tester -c 'bash -c "\$CHECKS" _ /usr'
 apt-get remove -y -qq ninimma >/dev/null
@@ -94,7 +94,7 @@ tarball() {
 set -eu
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq xvfb xauth libgl1-mesa-dri libx11-xcb1 libxkbcommon-x11-0 libxcursor1 \
+apt-get install -y -qq libasound2 xvfb xauth libgl1-mesa-dri libx11-xcb1 libxkbcommon-x11-0 libxcursor1 \
     libxi6 libxrender1 libegl1 libgl1 >/dev/null
 useradd -m tester
 su tester -c 'set -e
