@@ -28,6 +28,8 @@ put() { # put <source> <path under prefix> <mode>
     echo "$2" >> "$plist"
 }
 put "$binary" bin/ninimma 755
+python3 "$root/packaging/stage-enki.py" --target "$(rustc -vV | sed -n 's/^host: //p')" --out "$stage$prefix/lib/ninimma/enki"
+find "$stage$prefix/lib/ninimma/enki" -type f | sed "s|^$stage$prefix/||" >> "$plist"
 put "$root/packaging/linux/ninimma.desktop" share/applications/ninimma.desktop 644
 for png in "$root"/assets/icons/ninimma-*.png; do
     size=$(basename "$png" .png | sed 's/ninimma-//')

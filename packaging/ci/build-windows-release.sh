@@ -88,6 +88,7 @@ cfg=$(sh packaging/llama/patch-llama.sh)
 cargo build --locked --release --target "$target" --config "$cfg"
 exe=target/$target/release/ninimma.exe
 release=target/$target/release
+python3 packaging/stage-enki.py --target x86_64-pc-windows-msvc --out "$release/enki"
 
 # MinGW's C++ runtime is linked as DLLs (llama.cpp asks for it that way):
 # ship the ones the .exe imports next to it, or Windows won't start it.
@@ -116,5 +117,5 @@ WINEDEBUG=-all /usr/lib/wine/wine64 "$exe" --version
 cp LICENSE NOTICE "$release/"
 cp packaging/icons/LICENSE-lucide "$release/"
 rm -f "$archive"
-(cd "$release" && zip -q "../../../$archive" ninimma.exe "${runtime[@]}" LICENSE NOTICE LICENSE-lucide)
+(cd "$release" && zip -qr "../../../$archive" enki ninimma.exe "${runtime[@]}" LICENSE NOTICE LICENSE-lucide)
 zip -sf "$archive"

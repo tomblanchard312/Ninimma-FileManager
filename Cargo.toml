@@ -25,6 +25,13 @@ depends = "$auto, libasound2 | libasound2t64, xdg-utils, libx11-6, libx11-xcb1, 
 recommends = "libwayland-client0, libwayland-egl1"
 suggests = "ffmpeg, poppler-utils, imagemagick"
 assets = [
+    ["target/release/enki/sharedai-daemon", "usr/lib/ninimma/enki/sharedai-daemon", "755"],
+    ["target/release/enki/sharedai-worker", "usr/lib/ninimma/enki/sharedai-worker", "755"],
+    ["target/release/enki/sharedai-sd", "usr/lib/ninimma/enki/sharedai-sd", "755"],
+    ["target/release/enki/whisper-cli", "usr/lib/ninimma/enki/whisper-cli", "755"],
+    ["target/release/enki/*.txt", "usr/lib/ninimma/enki/", "644"],
+    ["target/release/enki/runtime.json", "usr/lib/ninimma/enki/", "644"],
+    ["target/release/enki/libsd_enki.so", "usr/lib/ninimma/enki/", "644"],
     ["target/release/ninimma", "usr/bin/", "755"],
     ["packaging/linux/ninimma.desktop", "usr/share/applications/", "644"],
     ["packaging/linux/io.github.tomblanchard312.ninimma.metainfo.xml", "usr/share/metainfo/", "644"],
@@ -46,6 +53,13 @@ assets = [
 summary = "Fast file manager with large thumbnails, bulk image rotation and tabs"
 url = "https://github.com/tomblanchard312/Ninimma-FileManager"
 assets = [
+    { source = "target/release/enki/sharedai-daemon", dest = "/usr/lib/ninimma/enki/sharedai-daemon", mode = "755" },
+    { source = "target/release/enki/sharedai-worker", dest = "/usr/lib/ninimma/enki/sharedai-worker", mode = "755" },
+    { source = "target/release/enki/sharedai-sd", dest = "/usr/lib/ninimma/enki/sharedai-sd", mode = "755" },
+    { source = "target/release/enki/whisper-cli", dest = "/usr/lib/ninimma/enki/whisper-cli", mode = "755" },
+    { source = "target/release/enki/*.txt", dest = "/usr/lib/ninimma/enki/", mode = "644" },
+    { source = "target/release/enki/runtime.json", dest = "/usr/lib/ninimma/enki/", mode = "644" },
+    { source = "target/release/enki/libsd_enki.so", dest = "/usr/lib/ninimma/enki/", mode = "644" },
     { source = "target/release/ninimma", dest = "/usr/bin/ninimma", mode = "755" },
     { source = "packaging/linux/ninimma.desktop", dest = "/usr/share/applications/ninimma.desktop", mode = "644" },
     { source = "packaging/linux/io.github.tomblanchard312.ninimma.metainfo.xml", dest = "/usr/share/metainfo/io.github.tomblanchard312.ninimma.metainfo.xml", mode = "644" },
@@ -192,4 +206,4 @@ candle-core = { path = "vendor/candle-core" }
 
 [dependencies.enki-speech-ui]
 git = "https://github.com/tomblanchard312/Qanloom.git"
-rev = "719d09989e86593ed84c6129d829df6a2e8ab1d0"
+rev = "d26daada860f8ed9d006d95c7b503515128974c3"

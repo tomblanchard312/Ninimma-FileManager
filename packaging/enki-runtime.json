@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0-preview.2",
+  "targets": {
+    "x86_64-unknown-linux-gnu": {
+      "name": "enki-runtime-0.2.0-preview.2-x86_64-unknown-linux-gnu.zip",
+      "sha256": "142c3e45a8c808215a2067a6d26fa6ba963321aa5fca3cdfc1f76378ef434f29",
+      "build_glibc": "2.39",
+      "cpu": "AVX2",
+      "commit": "33102ed4aded716965ece72653fc3d9671cb6356"
+    }
+  }
+}

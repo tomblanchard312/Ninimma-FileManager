@@ -44,13 +44,14 @@ cargo build --locked --release --target "$target"
 echo "Needs: $(objdump -T "target/$target/release/ninimma" | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -1)"
 
 release=target/$target/release
+python3 packaging/stage-enki.py --target "$target" --out "$release/enki"
 cp packaging/icons/LICENSE-lucide "$release/"
 cp packaging/linux/ninimma.desktop packaging/linux/install.sh LICENSE NOTICE \
     packaging/linux/io.github.tomblanchard312.ninimma.metainfo.xml "$release/"
 mkdir -p "$release/icons"
 cp assets/icons/*.png "$release/icons/"
 cp assets/icon.svg "$release/icons/ninimma.svg"
-tar -C "$release" -czf "$archive" ninimma ninimma.desktop install.sh icons LICENSE NOTICE LICENSE-lucide \
+tar -C "$release" -czf "$archive" ninimma enki ninimma.desktop install.sh icons LICENSE NOTICE LICENSE-lucide \
     io.github.tomblanchard312.ninimma.metainfo.xml
 
 # v1.2.0-rc1 -> 1.2.0~rc1: "~" sorts before the final release in both dpkg
