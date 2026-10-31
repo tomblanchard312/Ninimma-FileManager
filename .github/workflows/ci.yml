@@ -61,6 +61,8 @@ jobs:
         run: echo "BINDGEN_EXTRA_CLANG_ARGS=-I$(gcc -print-file-name=include)" >> "$GITHUB_ENV"
       - run: cargo fmt --all -- --check
         if: steps.changes.outputs.docs_only != 'true'
+      - run: python3 packaging/test_enki_runtime.py
+        if: steps.changes.outputs.docs_only != 'true'
       - run: python3 -m unittest discover -s packaging/linux
         if: steps.changes.outputs.docs_only != 'true'
       - run: cargo clippy --locked --all-targets -- -D warnings

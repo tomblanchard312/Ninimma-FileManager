@@ -8,8 +8,14 @@ here=$(cd "$(dirname "$0")" && pwd)
 bin_dir="${XDG_BIN_HOME:-$HOME/.local/bin}"
 app_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 
+for name in sharedai-daemon sharedai-worker sharedai-sd whisper-cli runtime.json BINARY-DISTRIBUTION-LICENSE.txt THIRD-PARTY-NOTICES.txt NATIVE-LICENSES.txt WHISPER-LICENSE.txt; do
+    [ -s "$here/enki/$name" ] || { echo "Missing bundled Enki file: $name" >&2; exit 1; }
+done
 mkdir -p "$bin_dir" "$app_dir"
 install -m 755 "$here/ninimma" "$bin_dir/ninimma"
+runtime_dir="$bin_dir/../lib/ninimma/enki"
+mkdir -p "$runtime_dir"
+cp -R "$here/enki/." "$runtime_dir/"
 # Use an absolute path so it works even if ~/.local/bin isn't on PATH.
 # Escape sed replacement characters and quote the desktop Exec path.
 exec_path=$(printf '%s' "$bin_dir/ninimma" | sed 's/[\\"`$]/\\&/g; s/[&|]/\\&/g')

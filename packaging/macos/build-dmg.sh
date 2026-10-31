@@ -9,6 +9,7 @@ trap 'rm -rf "$stage"' EXIT
 app="$stage/Ninimma.app/Contents"
 mkdir -p "$app/MacOS" "$app/Resources" "$stage/Ninimma.iconset"
 cp "target/$target/release/ninimma" "$app/MacOS/ninimma"
+python3 packaging/stage-enki.py --target "$target" --out "$app/MacOS/enki"
 cp LICENSE NOTICE "$app/Resources/"
 cp packaging/icons/LICENSE-lucide "$app/Resources/"
 for size in 16 32 128 256 512; do

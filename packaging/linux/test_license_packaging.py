@@ -25,6 +25,10 @@ class LicensePackagingTests(unittest.TestCase):
             source.mkdir()
             self.stage_notices(source)
             shutil.copyfile(ROOT / 'packaging/linux/install.sh', source / 'install.sh')
+            (source / 'enki').mkdir()
+            for name in ('sharedai-daemon', 'sharedai-worker', 'sharedai-sd', 'whisper-cli', 'runtime.json', 'BINARY-DISTRIBUTION-LICENSE.txt', 'THIRD-PARTY-NOTICES.txt', 'NATIVE-LICENSES.txt', 'WHISPER-LICENSE.txt'):
+                (source / 'enki' / name).write_bytes(b'fixture runtime file')
+
             shutil.copyfile(ROOT / f'packaging/linux/{APP}.desktop', source / f'{APP}.desktop')
             binary = source / APP
             binary.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$TEST_DEFAULT_ARGUMENTS"\n')
@@ -60,10 +64,16 @@ class LicensePackagingTests(unittest.TestCase):
             release = root / 'target/windows/release'
             release.mkdir(parents=True)
             (release / f'{APP}.exe').write_bytes(b'fixture executable')
+            (release / 'enki').mkdir()
+            (release / 'enki/sharedai-daemon.exe').write_bytes(b'fixture compiled daemon')
+            (release / 'enki/BINARY-DISTRIBUTION-LICENSE.txt').write_bytes(b'fixture runtime terms')
+
             script = (ROOT / 'packaging/ci/build-windows-release.sh').read_text()
             assembly = script[script.index('cp LICENSE NOTICE "$release/"'):]
             subprocess.run(['bash', '-euc', 'release=target/windows/release\narchive=fixture.zip\nruntime=()\n' + assembly],
                            cwd=root, check=True, capture_output=True)
             with zipfile.ZipFile(root / 'fixture.zip') as archive:
+                self.assertEqual(archive.read('enki/sharedai-daemon.exe'), b'fixture compiled daemon')
+                self.assertEqual(archive.read('enki/BINARY-DISTRIBUTION-LICENSE.txt'), b'fixture runtime terms')
                 for name in ('LICENSE', 'NOTICE', 'LICENSE-lucide'):
                     self.assertEqual(archive.read(name), (root / name).read_bytes())
