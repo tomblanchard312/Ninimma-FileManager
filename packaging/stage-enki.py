@@ -17,11 +17,18 @@ BINARIES = {'sharedai-daemon', 'sharedai-worker', 'sharedai-sd', 'whisper-cli'}
 NOTICES = {'BINARY-DISTRIBUTION-LICENSE.txt', 'THIRD-PARTY-NOTICES.txt', 'NATIVE-LICENSES.txt', 'WHISPER-LICENSE.txt'}
 
 
+def sha256_stream(stream):
+    digest = hashlib.sha256()
+    while chunk := stream.read(1024 * 1024):
+        digest.update(chunk)
+    return digest.hexdigest()
+
+
 def stage(archive, sha256, target, version, output):
     if archive.is_symlink() or not archive.is_file() or archive.stat().st_size > LIMIT:
         raise ValueError('Invalid or oversized runtime archive')
     with archive.open('rb') as stream:
-        if hashlib.file_digest(stream, 'sha256').hexdigest() != sha256:
+        if sha256_stream(stream) != sha256:
             raise ValueError('Runtime archive checksum mismatch')
     suffix = '.exe' if 'windows' in target else ''
     executables = {name + suffix for name in BINARIES}
@@ -44,7 +51,7 @@ def stage(archive, sha256, target, version, output):
         # Verify the entire payload before touching the package destination.
         for name, digest in metadata['files'].items():
             with package.open(name) as stream:
-                if hashlib.file_digest(stream, 'sha256').hexdigest() != digest:
+                if sha256_stream(stream) != digest:
                     raise ValueError('Runtime member checksum mismatch')
         if output.exists() or output.is_symlink():
             raise ValueError('Runtime destination already exists')
